@@ -30,10 +30,10 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Step 3: Not logged in → redirect to /login
+  // Step 3: Not logged in → redirect to / (landing page)
   if (!user) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
+    const loginUrl = new URL('/', request.url)
+    loginUrl.searchParams.set('auth', 'required')
     return NextResponse.redirect(loginUrl)
   }
 
