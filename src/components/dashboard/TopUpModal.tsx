@@ -14,8 +14,9 @@ const TEMPLATES = [
   { amount: 10, label: "$10", cycles: "100" },
   { amount: 15, label: "$15", cycles: "150" },
   { amount: 30, label: "$30", cycles: "300" },
-  { amount: 50, label: "$50", cycles: "515", bonus: "+3%" },
-  { amount: 100, label: "$100", cycles: "1050", bonus: "+5%" },
+  { amount: 50, label: "$50", cycles: "500" },
+  { amount: 100, label: "$100", cycles: "1000" },
+  { amount: 200, label: "$200", cycles: "2000" },
 ];
 
 const USD_TO_IDR = 16000;
@@ -108,11 +109,6 @@ export function TopUpModal({
                   >
                     <div className="text-sm font-bold">{t.label}</div>
                     <div className="text-[10px] text-muted">{t.cycles} cycles</div>
-                    {t.bonus && (
-                      <div className="mt-0.5 inline-block rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-medium text-accent">
-                        {t.bonus}
-                      </div>
-                    )}
                   </button>
                 ))}
               </div>
@@ -137,15 +133,9 @@ export function TopUpModal({
 
             <div className="mt-4 rounded-xl border border-border bg-surface-2 px-4 py-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted">You will pay (IDR)</span>
-                <span className="font-semibold text-text">
-                  Rp{(amount * USD_TO_IDR).toLocaleString("id-ID")}
-                </span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-xs">
                 <span className="text-muted">Cycles granted</span>
                 <span className="font-semibold text-text">
-                  {Math.floor((amount >= 100 ? amount * 1.05 : amount >= 50 ? amount * 1.03 : amount) / 0.1)} replies
+                  {Math.floor(amount / 0.1)} replies
                 </span>
               </div>
             </div>
@@ -160,15 +150,14 @@ export function TopUpModal({
                   "Processing…"
                 ) : (
                   <>
-                    <Check size={16} /> Pay with Midtrans
+                    <CreditCard size={16} /> Pay ${amount.toFixed(2)}
                   </>
                 )}
               </Button>
             </div>
 
-            <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-muted">
-              <Sparkles size={11} className="text-accent" />
-              GoPay · QRIS · Virtual Account · Cards
+            <div className="mt-3 text-center text-[10px] text-muted">
+              Credit/Debit Card · Apple Pay · Google Pay · Link
             </div>
           </motion.div>
         </motion.div>

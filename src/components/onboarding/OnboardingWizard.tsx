@@ -54,9 +54,14 @@ const TONES: { tone: ToneOfVoice; emoji: string; sample: string }[] = [
 function isValidUrl(url: string) {
   const trimmed = url.trim();
   if (!trimmed) return false;
-  const webRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?(\?.*)?$/i;
-  const playStoreRegex = /^(https?:\/\/)?(play\.google\.com\/store\/apps\/details\?id=|market:\/\/details\?id=)[a-zA-Z0-9._-]+/i;
-  return webRegex.test(trimmed) || playStoreRegex.test(trimmed);
+  try {
+    const hasProtocol = /^[a-z]+:\/\//i.test(trimmed);
+    const urlToTest = hasProtocol ? trimmed : `http://${trimmed}`;
+    const parsed = new URL(urlToTest);
+    return parsed.hostname.includes('.') && parsed.hostname.length > 3;
+  } catch {
+    return false;
+  }
 }
 
 function CategoryDropdown({
@@ -397,7 +402,7 @@ export default function OnboardingWizard({
                 <Input
                   value={form.app_url}
                   onChange={(e) => update("app_url", e.target.value)}
-                  placeholder="https://myapp.io or Google Play link"
+                  placeholder="https://myapp.io or app link"
                   className={`mt-2 ${
                     form.app_url && !isValidUrl(form.app_url)
                       ? "border-danger focus-visible:ring-danger"
@@ -406,7 +411,7 @@ export default function OnboardingWizard({
                 />
                 {form.app_url && !isValidUrl(form.app_url) && (
                   <p className="mt-1.5 text-xs text-danger">
-                    Please enter a valid website URL or Google Play Store link.
+                    Please enter a valid website URL or app link.
                   </p>
                 )}
               </div>
@@ -622,7 +627,7 @@ function Step1Fields({
           <Input
             value={form.app_url}
             onChange={(e) => update("app_url", e.target.value)}
-            placeholder="https://myapp.io or Google Play link"
+            placeholder="https://myapp.io or app link"
             className={
               form.app_url && !isValidUrl(form.app_url)
                 ? "border-danger focus-visible:ring-danger"
@@ -631,7 +636,7 @@ function Step1Fields({
           />
           {form.app_url && !isValidUrl(form.app_url) && (
             <p className="mt-1 text-xs text-danger">
-              Please enter a valid website URL or Google Play Store link.
+              Please enter a valid website URL or app link.
             </p>
           )}
         </div>

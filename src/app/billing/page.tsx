@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Sparkles, CreditCard, History, Loader2 } from "lucide-react";
+import { ArrowLeft, CreditCard, History, Loader2, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -17,7 +17,7 @@ import {
 } from "@/lib/data";
 import type { BillingEntry, Transaction } from "@/lib/types";
 
-const TEMPLATES = [2, 5, 10, 15, 30, 50, 100];
+const TEMPLATES = [2, 5, 10, 15, 30, 50, 100, 200];
 const USD_TO_IDR = 16000;
 
 const STATUS_COLORS = {
@@ -141,7 +141,7 @@ export default function BillingView() {
 
         <Card className="lg:col-span-2">
           <div className="flex items-center gap-2">
-            <Sparkles size={14} className="text-accent" />
+            <Wallet size={14} className="text-accent" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
               Top up
             </h3>
@@ -158,12 +158,6 @@ export default function BillingView() {
                 }`}
               >
                 <div className="text-base font-bold">${amt}</div>
-                {amt === 50 && (
-                  <div className="text-[9px] text-accent">+3% bonus</div>
-                )}
-                {amt === 100 && (
-                  <div className="text-[9px] text-accent">+5% bonus</div>
-                )}
               </button>
             ))}
           </div>
@@ -186,22 +180,9 @@ export default function BillingView() {
 
           <div className="mt-4 grid gap-2 rounded-xl border border-border bg-surface-2 p-3 text-xs">
             <div className="flex justify-between">
-              <span className="text-muted">Estimate IDR</span>
+              <span className="text-muted">Cycles granted</span>
               <span className="font-semibold text-text">
-                Rp{(customAmount * USD_TO_IDR).toLocaleString("id-ID")}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted">Cycles granted (~)</span>
-              <span className="font-semibold text-text">
-                ~{Math.floor(
-                  (customAmount >= 100
-                    ? customAmount * 1.05
-                    : customAmount >= 50
-                      ? customAmount * 1.03
-                      : customAmount) / 0.1
-                )}{" "}
-                replies
+                {Math.floor(customAmount / 0.1)} replies
               </span>
             </div>
           </div>
@@ -215,14 +196,13 @@ export default function BillingView() {
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <>
-                <CreditCard size={16} /> Pay Rp{(customAmount * USD_TO_IDR).toLocaleString("id-ID")} with Midtrans
+                <CreditCard size={16} /> Pay ${customAmount.toFixed(2)}
               </>
             )}
           </Button>
 
           <p className="mt-3 text-[11px] text-muted">
-            Methods: GoPay · QRIS · Virtual Account (BCA, Mandiri, BNI, BRI) ·
-            Credit/Debit cards.
+            Methods: Credit/Debit Card · Apple Pay · Google Pay · Link
           </p>
         </Card>
       </div>
@@ -260,7 +240,7 @@ export default function BillingView() {
                       Top up ${tx.top_up_amount_usd.toFixed(2)} · +${tx.credit_granted_usd.toFixed(2)} credit
                     </td>
                     <td className="px-4 py-3 text-text">
-                      Rp{tx.amount_idr.toLocaleString("id-ID")}
+                      ${tx.top_up_amount_usd.toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
                       <span

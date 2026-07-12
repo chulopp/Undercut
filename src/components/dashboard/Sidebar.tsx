@@ -82,7 +82,7 @@ export function Sidebar({
       <div className="border-t border-border p-3">
         <Link href="/" className={itemClass(false)}>
           <Home size={16} />
-          <span className="flex-1">Back to landing</span>
+          <span className="flex-1">Back to landing page</span>
         </Link>
         <Link href="/login" className={itemClass(false)}>
           <LogOut size={16} />
