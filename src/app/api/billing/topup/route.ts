@@ -80,7 +80,7 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'payment',
-      success_url: `${origin}/dashboard/x?payment=success&order_id=${gatewayOrderId}`,
+      success_url: `${origin}/dashboard/x?payment=success&order_id=${gatewayOrderId}&amount=${amountUsd}`,
       cancel_url: `${origin}/dashboard/x?payment=cancelled`,
       customer_email: user.email,
       metadata: {

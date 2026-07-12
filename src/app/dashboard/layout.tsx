@@ -10,6 +10,7 @@ import { TopUpModal } from "@/components/dashboard/TopUpModal";
 import { LowBalanceBanner } from "@/components/dashboard/LowBalanceBanner";
 import { useEffect } from "react";
 import { listLeads, getBillingStatus } from "@/lib/data";
+import { useToast } from "@/components/ui/Toast";
 
 export default function DashboardLayoutShell({
   children,
@@ -23,6 +24,33 @@ export default function DashboardLayoutShell({
 
   const pathname = usePathname();
   const router = useRouter();
+  const toast = useToast();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const payment = params.get("payment");
+      const amount = params.get("amount");
+      if (payment === "success") {
+        const val = amount ? parseFloat(amount) : 0;
+        if (val > 0) {
+          toast.success(`Top-up of $${val.toFixed(2)} was successful!`);
+        } else {
+          toast.success("Top-up was successful!");
+        }
+        // Force credit widget to update
+        window.dispatchEvent(new CustomEvent("billing-updated"));
+        // Clean URL query parameters
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      } else if (payment === "cancelled") {
+        toast.error("Top-up was cancelled.");
+        // Clean URL query parameters
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, [toast]);
 
   useEffect(() => {
     const fetchCounts = async () => {
