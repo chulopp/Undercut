@@ -17,19 +17,57 @@
 
 ---
 
-## Overview
+## 🚀 HackOnVibe Hackathon Submission
 
-Undercut monitors X (Twitter) and Instagram for public posts where users express frustration with your competitors. An AI pipeline classifies each post and drafts a contextual, on-brand reply that positions your product as the solution. You review the draft, adjust if needed, and send.
+**Undercut** was built and designed for the **HackOnVibe** hackathon as an AI-powered growth hacking tool. It enables startups and indie hackers to capture high-intent customers by monitoring competitor complaints in real-time.
 
-The platform is designed for indie hackers, growth teams, and SaaS founders who want to acquire users from organic social conversations without manual monitoring.
+---
 
-### Key Capabilities
+## 🎯 Product Description & Concept
 
-- **Multi-platform scraping** — real-time ingestion from X and Instagram via RapidAPI.
-- **Two-gate AI pipeline** — Gate 1 classifies complaint relevance; Gate 2 generates a personalized reply draft.
-- **Credit-based billing** — free trial credits with weekly reset, plus Stripe-powered top-ups with tiered bonuses.
-- **Onboarding wizard** — guided setup for product profile, competitor targets, and tone of voice.
-- **Mobile-responsive dashboard** — optimized for both desktop and mobile use.
+**Undercut** is a social listening and automated lead acquisition platform. Instead of spending hours manual-searching keywords on social media, Undercut automates the entire funnel:
+1. **Scrapes** recent posts mentioning competitors on X (Twitter) and Instagram.
+2. **Filters** out noise using an AI classification gate (only showing genuine complaints or high-intent posts).
+3. **Drafts** custom, contextual, and persuasive pitch replies tailored to the user's product, core differentiators, and preferred brand voice.
+4. **Simplifies** the reply process with single-click actions (X tweet intents or copy-paste helpers).
+
+---
+
+## 👥 Target Users
+
+Undercut is designed specifically for:
+- **Indie Hackers & Solo Founders**: Acquire early adopters by directly offering your alternative to frustrated users.
+- **SaaS Growth Teams**: Scale organic user acquisition by hijacking competitor complaints.
+- **Digital Marketers**: Track competitor brand sentiments and capture leads in real-time.
+
+---
+
+## 🛠️ What We Built for HackOnVibe
+
+For the **HackOnVibe** hackathon, we built a fully-functioning end-to-end MVP. Here are the core features implemented:
+
+### 1. Multi-Platform Scraper Ingestion
+- Real-time background data fetching from **X (Twitter)** and **Instagram** via RapidAPI.
+- Automatically handles normalizations and filters out duplicates.
+
+### 2. High-Performance Two-Gate AI Pipeline
+- **Gate 1 (AI Gatekeeper)**: Leverages OpenRouter/Nemotron to inspect the raw content and classify if it is a relevant competitor complaint. Irrelevant posts (noise) are immediately hard deleted.
+- **Gate 2 (AI Reply Draftsman)**: Leverages DeepSeek to draft personalized replies containing custom product profile differentiators matching the user's brand voice.
+
+### 3. Interactive Lead Queue & Dashboard
+- Clean, responsive platform tabs (X and Instagram).
+- **Draft Sorting**: Leads with generated drafts are prioritized and automatically sorted to the top.
+- **Inline Editing & Validation**: Edit drafts directly with real-time character limit enforcement (free X plan auto-restricted to `262` chars to prevent Twitter overflow).
+- **Delete All**: Clean up queues in one click with stylized action pills.
+
+### 4. Credit-Based Billing & Monetization
+- **Free Trial**: New users start with `$0.00` balance and **5 free demo credits** resetting weekly.
+- **Stripe Top-ups**: Fully integrated Stripe checkout session flows with bonus reward tiers (3% bonus for $50+, 5% bonus for $100+).
+- **Dynamic Success Callback**: Handles Stripe webhooks and callbacks, automatically refreshing balances and displaying success notifications with the exact top-up amount.
+
+### 5. Personalized Onboarding Wizard
+- Step-by-step onboarding flow setting up **Product Name**, **Landing Page**, **Core Competitors**, and **Core Differentiators**.
+- Interactive **Tone of Voice** selector (Professional, Casual, Supportive, Bold) with real-time AI-generated preview.
 
 ---
 
