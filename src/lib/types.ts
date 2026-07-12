@@ -30,6 +30,7 @@ export interface Profile {
   credit_balance: number;
   free_demo_credits_remaining: number;
   free_demo_reset_at: string;
+  x_plan: "free" | "paid";
   created_at: string;
 }
 
@@ -42,6 +43,7 @@ export interface ProfileInput {
   tone_of_voice: ToneOfVoice;
   differentiators: Differentiators;
   company_name?: string | null;
+  x_plan?: "free" | "paid";
 }
 
 export interface Competitor {

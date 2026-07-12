@@ -6,6 +6,7 @@ import {
   MOCK_LEADS,
   MOCK_PROFILE,
   MOCK_TRANSACTIONS,
+  MOCK_REPLIES,
 } from "@/lib/mock-data";
 import type {
   Competitor,
@@ -203,4 +204,46 @@ export function decrementDemoCredit() {
     };
   }
   return { ...profileStore };
+}
+
+export function deductBillingCredit(): boolean {
+  if (profileStore.free_demo_credits_remaining > 0) {
+    profileStore = {
+      ...profileStore,
+      free_demo_credits_remaining: profileStore.free_demo_credits_remaining - 1,
+    };
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("billing-updated"));
+    }
+    return true;
+  } else if (profileStore.credit_balance >= 0.10) {
+    profileStore = {
+      ...profileStore,
+      credit_balance: Number((profileStore.credit_balance - 0.10).toFixed(2)),
+    };
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("billing-updated"));
+    }
+    return true;
+  }
+  return false;
+}
+
+export async function generateLeadReply(id: string): Promise<Lead> {
+  await delay(1200); // simulate generation delay
+
+  const reply = MOCK_REPLIES[id] || "Hey! I saw your post. I built Undercut to help with this. Let me know if you want to try it!";
+  
+  leadsStore = leadsStore.map((l) =>
+    l.id === id ? {
+      ...l,
+      gate_2_generated_reply: reply,
+      gate_2_model_used: "deepseek-chat",
+      processing_time_ms: 3200
+    } : l
+  );
+  
+  const updated = leadsStore.find((l) => l.id === id);
+  if (!updated) throw new Error("Lead not found");
+  return updated;
 }

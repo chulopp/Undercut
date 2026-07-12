@@ -285,10 +285,10 @@ export function LiveDemoWidget() {
           {/* Reply Card */}
           <div>
             <TweetCard
-              authorName={example.replyAuthorName}
-              authorHandle={example.replyAuthorHandle}
-              avatar={example.replyAvatar}
-              verified={example.replyVerified}
+              authorName="Undercut AI"
+              authorHandle="@undercut"
+              avatar="/LogoUndercut.svg"
+              verified={true}
               text={example.reply}
               isTypewriter={true}
               timestamp={example.timestamp}

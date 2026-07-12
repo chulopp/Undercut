@@ -31,10 +31,10 @@ function ComplaintCard() {
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
-              <span className="truncate text-sm font-bold text-text">frustrated_user</span>
+              <span className="truncate text-sm font-bold text-text">Alex Rivera</span>
               <VerifiedBadge />
             </div>
-            <p className="truncate text-xs text-muted">@frust_dev</p>
+            <p className="truncate text-xs text-muted">@alexrivera</p>
           </div>
           <div className="text-muted shrink-0 opacity-80 mt-0.5">
             <XIcon style={{ fontSize: 13 }} />
@@ -42,7 +42,7 @@ function ComplaintCard() {
         </div>
 
         <p className="mt-3 text-sm leading-relaxed text-text/90">
-          Ugh, <span className="text-accent hover:underline cursor-pointer">@CompetitorApp</span> keeps crashing everytime I open it. Lost all my drafts twice this week. Why is there no alternative? 😤
+          Ugh, the built-in Notes app on my new <span className="text-accent hover:underline cursor-pointer">@IphOneNotes</span> keeps crashing everytime I open it. Lost all my drafts twice this week. Why is there no alternative? 😤
         </p>
 
         <p className="mt-3 text-xs text-muted">
@@ -77,21 +77,16 @@ function ReplyCard() {
       >
         <div className="flex items-start gap-3">
           <img 
-            src="https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=80&h=80&q=80" 
-            className="h-9 w-9 rounded-full object-cover shrink-0" 
+            src="/LogoUndercut.svg" 
+            className="h-9 w-9 rounded-full object-contain shrink-0 bg-surface-2 p-0.5 border border-border/40" 
             alt="avatar" 
           />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1 justify-between">
-              <div className="flex items-center gap-1">
-                <span className="truncate text-sm font-bold text-text">Solo Studio</span>
-                <VerifiedBadge />
-              </div>
-              <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success shrink-0">
-                280 chars
-              </span>
+            <div className="flex items-center gap-1">
+              <span className="truncate text-sm font-bold text-text">Undercut AI</span>
+              <VerifiedBadge />
             </div>
-            <p className="truncate text-xs text-muted">@solostudio</p>
+            <p className="truncate text-xs text-muted mt-0.5">@undercut</p>
           </div>
           <div className="text-muted shrink-0 opacity-80 mt-0.5">
             <XIcon style={{ fontSize: 13 }} />
@@ -99,8 +94,8 @@ function ReplyCard() {
         </div>
 
         <p className="mt-3 text-sm leading-relaxed text-text/90">
-          Sorry to hear the drafts keep disappearing — that&apos;s rough. I made
-          <span className="text-accent font-semibold"> @MyApp</span> exactly for this: autosave
+          Sorry to hear the drafts keep disappearing from your Iph one — that&apos;s rough. I made
+          <span className="text-accent font-semibold"> @NoteNest</span> exactly for this: autosave
           every keystroke, offline-first. Free trial if you want to test it 👇
         </p>
 
@@ -109,7 +104,10 @@ function ReplyCard() {
         </p>
 
         <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between">
-          <span className="text-[10px] text-accent font-semibold uppercase tracking-wider">Draft Suggestion</span>
+          <div className="flex items-center gap-3 text-[10px] font-normal text-muted select-none">
+            <span><strong className="text-text font-bold">0</strong> Retweets</span>
+            <span><strong className="text-text font-bold">0</strong> Likes</span>
+          </div>
           <div className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-accent/20 cursor-pointer hover:brightness-105 active:scale-95 transition-all">
             <Send size={11} /> Reply on X
           </div>

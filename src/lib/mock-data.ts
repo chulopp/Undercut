@@ -26,6 +26,7 @@ export const MOCK_PROFILE: Profile = {
   credit_balance: 2.0,
   free_demo_credits_remaining: 5,
   free_demo_reset_at: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
+  x_plan: "free",
   created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
 };
 
@@ -73,6 +74,16 @@ const min = 60 * 1000;
 const hr = 60 * min;
 const day = 24 * hr;
 
+export const MOCK_REPLIES: Record<string, string> = {
+  "lead-1": "Ugh, losing notes is the worst 😩 I built MyApp with offline-first sync so drafts never disappear — even on flaky wifi. Free trial if you wanna swap 👇",
+  "lead-2": "Right?? Paying AND getting ads is rough. MyApp is $9/mo, zero ads, no upsell treadmill. First month free if you DM me 🙌",
+  "lead-3": "Heard you — 5 days is unacceptable. MyApp has 24h SLA on every plan, even free. We answer tickets ourselves, no bots. Want a test account?",
+  "lead-4": "Ouch, that's painful checkout pain right there. MyApp streamlines checkout in 2 taps, no errors guaranteed. Free trial today — link in bio!",
+  "lead-5": "Auto replies at checkout pain are the worst 😩 MyApp ships in 1 day with real human support. Free trial — link in bio!",
+  "lead-6": "Losing 3 hours of work is soul-crushing. MyApp autosaves every keystroke + offline-first so even crashes don't lose you. Free trial 👇",
+  "lead-8": "Confusing UI updates are frustrating. MyApp keeps order history visible always + clean UI. Try free today — link in bio!"
+};
+
 export const MOCK_LEADS: Lead[] = [
   {
     id: "lead-1",
@@ -86,11 +97,10 @@ export const MOCK_LEADS: Lead[] = [
     post_url: "https://twitter.com/frust_dev/status/1837562819552",
     gate_1_passed: true,
     gate_1_model_used: "nvidia/nemotron-3-super-120b-a12b:free",
-    gate_2_generated_reply:
-      "Ugh, losing notes is the worst 😩 I built MyApp with offline-first sync so drafts never disappear — even on flaky wifi. Free trial if you wanna swap 👇",
-    gate_2_model_used: "deepseek-chat",
+    gate_2_generated_reply: null,
+    gate_2_model_used: null,
     status: "PENDING",
-    processing_time_ms: 41200,
+    processing_time_ms: null,
     created_at: new Date(now - 8 * min).toISOString(),
   },
   {
@@ -105,11 +115,10 @@ export const MOCK_LEADS: Lead[] = [
     post_url: "https://twitter.com/marketingguy/status/1837552819551",
     gate_1_passed: true,
     gate_1_model_used: "nvidia/nemotron-3-super-120b-a12b:free",
-    gate_2_generated_reply:
-      "Right?? Paying AND getting ads is rough. MyApp is $9/mo, zero ads, no upsell treadmill. First month free if you DM me 🙌",
-    gate_2_model_used: "deepseek-chat",
+    gate_2_generated_reply: null,
+    gate_2_model_used: null,
     status: "PENDING",
-    processing_time_ms: 38900,
+    processing_time_ms: null,
     created_at: new Date(now - 32 * min).toISOString(),
   },
   {
@@ -124,11 +133,10 @@ export const MOCK_LEADS: Lead[] = [
     post_url: "https://twitter.com/startup_founder/status/1837542819550",
     gate_1_passed: true,
     gate_1_model_used: "google/gemma-4-31b-it:free",
-    gate_2_generated_reply:
-      "Heard you — 5 days is unacceptable. MyApp has 24h SLA on every plan, even free. We answer tickets ourselves, no bots. Want a test account?",
-    gate_2_model_used: "deepseek-chat",
+    gate_2_generated_reply: null,
+    gate_2_model_used: null,
     status: "PENDING",
-    processing_time_ms: 52300,
+    processing_time_ms: null,
     created_at: new Date(now - 2 * hr).toISOString(),
   },
   {
@@ -143,11 +151,10 @@ export const MOCK_LEADS: Lead[] = [
     post_url: "https://instagram.com/p/DkBc9x23/",
     gate_1_passed: true,
     gate_1_model_used: "nvidia/nemotron-3-super-120b-a12b:free",
-    gate_2_generated_reply:
-      "Ouch, that's painful checkout pain right there. MyApp streamlines checkout in 2 taps, no errors guaranteed. Free trial today — link in bio!",
-    gate_2_model_used: "deepseek-chat",
+    gate_2_generated_reply: null,
+    gate_2_model_used: null,
     status: "PENDING",
-    processing_time_ms: 44000,
+    processing_time_ms: null,
     created_at: new Date(now - 4 * hr).toISOString(),
   },
   {
@@ -162,11 +169,10 @@ export const MOCK_LEADS: Lead[] = [
     post_url: "https://instagram.com/p/DkAa1p08/",
     gate_1_passed: true,
     gate_1_model_used: "nvidia/nemotron-3-super-120b-a12b:free",
-    gate_2_generated_reply:
-      "Auto replies at checkout pain are the worst 😩 MyApp ships in 1 day with real human support. Free trial — link in bio!",
-    gate_2_model_used: "deepseek-chat",
+    gate_2_generated_reply: null,
+    gate_2_model_used: null,
     status: "PENDING",
-    processing_time_ms: 39800,
+    processing_time_ms: null,
     created_at: new Date(now - 6 * hr).toISOString(),
   },
   {
@@ -181,8 +187,7 @@ export const MOCK_LEADS: Lead[] = [
     post_url: "https://twitter.com/designsby_lila/status/1837512819546",
     gate_1_passed: true,
     gate_1_model_used: "nvidia/nemotron-3-super-120b-a12b:free",
-    gate_2_generated_reply:
-      "Losing 3 hours of work is soul-crushing. MyApp autosaves every keystroke + offline-first so even crashes don't lose you. Free trial 👇",
+    gate_2_generated_reply: "Losing 3 hours of work is soul-crushing. MyApp autosaves every keystroke + offline-first so even crashes don't lose you. Free trial 👇",
     gate_2_model_used: "deepseek-chat",
     status: "REPLIED",
     processing_time_ms: 33100,
@@ -218,8 +223,7 @@ export const MOCK_LEADS: Lead[] = [
     post_url: "https://instagram.com/p/Dk2Tt12/",
     gate_1_passed: true,
     gate_1_model_used: "google/gemma-4-31b-it:free",
-    gate_2_generated_reply:
-      "Confusing UI updates are frustrating. MyApp keeps order history visible always + clean UI. Try free today — link in bio!",
+    gate_2_generated_reply: "Confusing UI updates are frustrating. MyApp keeps order history visible always + clean UI. Try free today — link in bio!",
     gate_2_model_used: "deepseek-chat",
     status: "REPLIED",
     processing_time_ms: 41500,

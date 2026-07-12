@@ -59,19 +59,35 @@ export function LeadQueue({ platform }: { platform: Platform }) {
 
   if (loading) {
     return (
-      <div className="space-y-3">
-        {[...Array(3)].map((_, i) => (
-          <div
-            key={i}
-            className="rounded-2xl border border-border bg-surface p-4"
-          >
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-9 rounded-full" />
-              <Skeleton className="h-3 w-32" />
+      <div className="space-y-4">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Left Card Skeleton */}
+            <div className="rounded-2xl border border-border bg-surface p-4 min-h-[220px] flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <Skeleton className="h-3.5 w-32" />
+                </div>
+                <Skeleton className="mt-4 h-3.5 w-full" />
+                <Skeleton className="mt-2.5 h-3.5 w-3/4" />
+              </div>
+              <Skeleton className="h-3 w-24" />
             </div>
-            <Skeleton className="mt-3 h-3 w-full" />
-            <Skeleton className="mt-2 h-3 w-2/3" />
-            <Skeleton className="mt-3 h-12 w-full" />
+            {/* Right Card Skeleton */}
+            <div className="rounded-2xl border border-border bg-surface p-4 min-h-[220px] flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="mt-4 h-3.5 w-full" />
+                <Skeleton className="mt-2.5 h-3.5 w-1/2" />
+              </div>
+              <div className="flex justify-end">
+                <Skeleton className="h-8 w-24 rounded-lg" />
+              </div>
+            </div>
           </div>
         ))}
       </div>

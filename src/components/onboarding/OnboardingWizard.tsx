@@ -250,6 +250,7 @@ export default function OnboardingWizard({
             tone_of_voice: p.tone_of_voice,
             differentiators: p.differentiators,
             company_name: p.company_name,
+            x_plan: p.x_plan || "free",
           });
         }
       });
@@ -337,6 +338,8 @@ export default function OnboardingWizard({
               onDiffChange={handleDiffChange}
               onAddDiff={handleAddDiff}
               onRemoveDiff={handleRemoveDiff}
+              xPlan={form.x_plan ?? "free"}
+              onXPlanChange={(plan) => update("x_plan", plan)}
             />
             <div className="rounded-xl border border-border bg-surface p-5">
               <h3 className="mb-4 text-sm font-bold text-text">✨ Live Tone Preview</h3>
@@ -543,6 +546,40 @@ export default function OnboardingWizard({
                 )}
               </div>
 
+              {/* X Account Plan Selection */}
+              <div className="border-t border-border/40 pt-4 space-y-2">
+                <label className="block text-xs font-medium uppercase tracking-wider text-muted">
+                  X (Twitter) Account Plan *
+                </label>
+                <p className="text-[11px] text-muted leading-relaxed">
+                  Select your X account plan to enforce the correct character limits on replies.
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => update("x_plan", "free")}
+                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors ${
+                      form.x_plan === "free"
+                        ? "border-accent bg-accent/10 text-accent font-semibold"
+                        : "border-border bg-surface text-text hover:border-accent/40"
+                    }`}
+                  >
+                    Free Plan (280 chars)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => update("x_plan", "paid")}
+                    className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors ${
+                      form.x_plan === "paid"
+                        ? "border-accent bg-accent/10 text-accent font-semibold"
+                        : "border-border bg-surface text-text hover:border-accent/40"
+                    }`}
+                  >
+                    Paid Plan (X Premium / 25k chars)
+                  </button>
+                </div>
+              </div>
+
               <div className="mt-4 border-t border-border/40 pt-4">
                 <p className="mb-3.5 text-xs font-semibold uppercase tracking-wider text-accent">
                   ✨ Live Tone Preview
@@ -696,11 +733,15 @@ function Step3Fields({
   onDiffChange,
   onAddDiff,
   onRemoveDiff,
+  xPlan,
+  onXPlanChange,
 }: {
   diffs: string[];
   onDiffChange: (index: number, val: string) => void;
   onAddDiff: () => void;
   onRemoveDiff: (index: number) => void;
+  xPlan: "free" | "paid";
+  onXPlanChange: (val: "free" | "paid") => void;
 }) {
   return (
     <section className="rounded-xl border border-border bg-surface p-5">
@@ -743,6 +784,40 @@ function Step3Fields({
           + Add differentiator
         </button>
       )}
+
+      {/* X Account Plan Selection */}
+      <div className="mt-6 border-t border-border pt-4 space-y-2">
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">
+          X (Twitter) Account Plan *
+        </label>
+        <p className="text-xs text-muted leading-relaxed mb-3">
+          Select your X account plan to enforce the correct character limits on replies.
+        </p>
+        <div className="flex gap-4">
+          <button
+            type="button"
+            onClick={() => onXPlanChange("free")}
+            className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors ${
+              xPlan === "free"
+                ? "border-accent bg-accent/10 text-accent font-semibold"
+                : "border-border bg-surface hover:border-accent/40"
+            }`}
+          >
+            Free Plan (280 chars)
+          </button>
+          <button
+            type="button"
+            onClick={() => onXPlanChange("paid")}
+            className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm transition-colors ${
+              xPlan === "paid"
+                ? "border-accent bg-accent/10 text-accent font-semibold"
+                : "border-border bg-surface hover:border-accent/40"
+            }`}
+          >
+            Paid Plan (X Premium / 25k chars)
+          </button>
+        </div>
+      </div>
     </section>
   );
 }

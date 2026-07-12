@@ -12,14 +12,19 @@ export function CreditWidget({ onTopUp }: { onTopUp: () => void }) {
 
   useEffect(() => {
     let mounted = true;
-    getBillingStatus().then((s) => {
-      if (mounted) {
-        setStatus(s);
-        setLoading(false);
-      }
-    });
+    const reload = () => {
+      getBillingStatus().then((s) => {
+        if (mounted) {
+          setStatus(s);
+          setLoading(false);
+        }
+      });
+    };
+    reload();
+    window.addEventListener("billing-updated", reload);
     return () => {
       mounted = false;
+      window.removeEventListener("billing-updated", reload);
     };
   }, []);
 
