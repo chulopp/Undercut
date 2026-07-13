@@ -23,6 +23,48 @@
 > Therefore, we have fully deployed the working application to our own hosted environment:
 > **👉 Live Demo: [https://undercut-sigma.vercel.app](https://undercut-sigma.vercel.app/)**
 
+---
+
+## 🎥 Video Demo & Quick Links
+
+- **Demo Video**: [Watch on YouTube (https://youtu.be/cA9n3KbqTFc)](https://youtu.be/cA9n3KbqTFc)
+- **Live Application**: [https://undercut-sigma.vercel.app](https://undercut-sigma.vercel.app/)
+
+---
+
+## 📋 Hackathon Questionnaire
+
+### 1. What does your application/service do?
+**Undercut** is an AI-powered social listening and automated lead acquisition platform that monitors competitor complaints on X (Twitter) and Instagram. 
+It automates the following workflow:
+- **Scrapes** recent posts targeting specified competitors.
+- **Filters** out noise and irrelevant mentions using an AI classification gate (Gate 1).
+- **Drafts** contextual, brand-aligned pitch replies (Gate 2) using your own product profile, differentiators, and chosen tone of voice.
+- **Routes** the user directly to a pre-filled native Twitter intent link or copies to clipboard for Instagram, allowing users to send human-approved pitches in one click.
+
+### 2. Who is the target audience?
+Our primary users are:
+- **Indie Hackers & Solo Founders**: Looking to acquire their first adopters by presenting a better alternative to frustrated competitor users.
+- **SaaS Growth Teams**: Seeking to scale organic acquisition channels.
+- **Bootstrap Developers**: Running on limited marketing budgets who want to acquire high-intent users directly.
+
+### 3. Which countries are the expected buyers of this service?
+Undercut targets a **global market** of creators and startups. However, key markets include:
+- **United States & Europe**: High density of startups, SaaS founders, and growth hackers.
+- **Southeast Asia (especially Indonesia & Singapore)**: A rapidly expanding community of tech builders and indie hackers looking for cost-effective organic growth.
+
+### 4. Who are your competitors?
+- **Traditional Social Listening Suites** (e.g., Brand24, Mention, Sprout Social): Powerful but expensive, complex to configure, and lack automated, product-aware AI pitch drafting.
+- **Twitter-only growth tools** (e.g., TweetHunter): Great for scheduling and general engagement, but not specialized in intercepting and pitching competitor complaints across multiple platforms.
+
+### 5. What is your advantage?
+- **Two-Gate AI Filtering**: Lowers cost and noise by instantly removing junk posts (Gate 1) before generating response pitches (Gate 2).
+- **Anti-Bot Philosophy**: Instead of automated bot spamming (which risks social account bans), Undercut generates drafts and lets the user review and reply with a single click via native web intents, maintaining account safety and trust.
+- **Prepaid Credit System**: Easy, flexible payment top-ups with Stripe checkout and tiered bonuses, paired with free credits that reset weekly.
+- **Mobile-Responsive UI**: Built to allow founders to monitor leads and pitch alternatives on the go.
+
+---
+
 ## 🚀 HackOnVibe Hackathon Submission
 
 **Undercut** was built and designed for the **HackOnVibe** hackathon as an AI-powered growth hacking tool. It enables startups and indie hackers to capture high-intent customers by monitoring competitor complaints in real-time.
