@@ -35,6 +35,9 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
   },
+  verification: {
+    google: "RDqO8MqGIMaagmt5eb9vQIkZEij4VzXLoowTNeV_2VY",
+  },
 };
 
 export const viewport: Viewport = {
