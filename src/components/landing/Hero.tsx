@@ -198,6 +198,14 @@ export function Hero() {
             <p className="text-sm text-muted">
               5 free replies every week. Forever.
             </p>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25 }}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface/40 px-4 py-2 text-xs font-semibold text-white md:hidden mt-6 shadow-[0_4px_12px_rgba(0,0,0,0.3)] backdrop-blur-xs"
+            >
+              Track Competitors &rarr; AI Writes Reply &rarr; Hit Send
+            </motion.div>
           </motion.div>
         </div>
 
@@ -206,7 +214,7 @@ export function Hero() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="mx-auto mt-20 w-fit max-w-full rounded-2xl md:rounded-full border border-border bg-surface/30 px-8 py-4 md:py-3 shadow-[0_8px_30px_rgb(0,0,0,0.4)] backdrop-blur-xs"
+          className="mx-auto mt-20 w-fit max-w-full rounded-2xl md:rounded-full border border-border bg-surface/30 px-8 py-4 md:py-3 shadow-[0_8px_30px_rgb(0,0,0,0.4)] backdrop-blur-xs hidden md:block"
         >
           <div className="flex flex-col items-center justify-center gap-4 md:flex-row md:gap-6 text-sm">
             {/* Step 1 */}
@@ -238,7 +246,7 @@ export function Hero() {
           </div>
         </motion.div>
 
-        <div className="relative mx-auto mt-24 h-[340px] max-w-4xl">
+        <div className="relative mx-auto mt-0 lg:mt-24 h-0 lg:h-[340px] max-w-4xl">
           <ComplaintCard />
           <ReplyCard />
 
@@ -260,15 +268,6 @@ export function Hero() {
             >
               <ArrowRight className="text-accent" size={28} />
             </motion.div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="mx-auto mt-6 max-w-md rounded-lg border border-border bg-surface/60 p-3 text-center text-xs text-muted lg:hidden"
-          >
-            Live demo: complaint → AI draft → one-click reply
           </motion.div>
         </div>
       </div>

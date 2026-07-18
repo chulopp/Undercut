@@ -50,63 +50,76 @@ export function Navbar() {
     };
   }, [supabase]);
 
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
   return (
-    <motion.header
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.4 }}
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "border-b border-border bg-bg/80 backdrop-blur-xl"
-          : "border-b border-transparent bg-transparent"
-      }`}
-    >
-      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-        <Link href="/" aria-label="Undercut home" className="shrink-0">
-          <Logo />
-        </Link>
+    <>
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+          scrolled || menuOpen
+            ? "border-b border-border bg-bg/95 backdrop-blur-xl"
+            : "border-b border-transparent bg-transparent"
+        }`}
+      >
+        <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
+          <Link href="/" aria-label="Undercut home" className="shrink-0">
+            <Logo />
+          </Link>
 
-        <div className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-muted transition-colors hover:text-text"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
+          <div className="hidden items-center gap-8 md:flex">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-muted transition-colors hover:text-text"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
 
-        <div className="hidden items-center gap-3 md:flex">
-          {user ? (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => router.push("/dashboard/x")}
-            >
-              Dashboard
-            </Button>
-          ) : (
-            <>
-              <Button variant="ghost" size="sm" onClick={open}>
-                Log In
+          <div className="hidden items-center gap-3 md:flex">
+            {user ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => router.push("/dashboard/x")}
+              >
+                Dashboard
               </Button>
-              <Button variant="primary" size="sm" onClick={open}>
-                Start Free
-              </Button>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" onClick={open}>
+                  Log In
+                </Button>
+                <Button variant="primary" size="sm" onClick={open}>
+                  Start Free
+                </Button>
+              </>
+            )}
+          </div>
 
-        <button
-          aria-label="Open menu"
-          className="rounded-lg p-2 text-text md:hidden"
-          onClick={() => setMenuOpen(true)}
-        >
-          <Menu size={24} />
-        </button>
-      </nav>
+          <button
+            aria-label="Open menu"
+            className="rounded-lg p-2 text-text md:hidden"
+            onClick={() => setMenuOpen(true)}
+          >
+            <Menu size={24} />
+          </button>
+        </nav>
+      </motion.header>
 
       <AnimatePresence>
         {menuOpen && (
@@ -188,6 +201,6 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.header>
+    </>
   );
 }
