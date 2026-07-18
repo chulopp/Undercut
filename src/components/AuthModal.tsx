@@ -50,8 +50,6 @@ export function AuthModal() {
 
   const handleGoogleSignIn = async () => {
     try {
-      /*
-      // === ORIGINAL GOOGLE OAUTH FLOW (Reversible) ===
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -59,19 +57,6 @@ export function AuthModal() {
         },
       });
       if (error) throw error;
-      // ===============================================
-      */
-
-      // === HACKATHON BYPASS: Auto-login with confirmed test user ===
-      const { error } = await supabase.auth.signInWithPassword({
-        email: "hackathon-judge@undercut.app",
-        password: "HackathonPassword123!"
-      });
-      if (error) throw error;
-
-      close();
-      window.location.href = "/dashboard";
-      // ==============================================================
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error("Google sign in failed:", errMsg);
