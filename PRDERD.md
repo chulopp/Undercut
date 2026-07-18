@@ -5,7 +5,7 @@
 **Target Event:** HackOnVibe Edition (Tema: Effective promotion of a newly launched mobile app)
 **Product Tier:** Full Working SaaS (bukan sekadar demo hackathon — dirancang untuk tetap hidup & billable setelah acara selesai)
 **Architecture Style:** Serverless Monolith (Next.js App Router + Supabase)
-**Versi Dokumen:** 4.0 — Revisi besar: Landing Page jadi single source of truth (docs page dihapus), struktur landing page detail ala TweetHunter, elemen 3D di hero, dan end-to-end User Journey/UX flow
+**Versi Dokumen:** 4.1 — Revisi keselarasan dengan codebase & database: Memperbarui spesifikasi Stripe gateway default, kuota free demo mingguan (5 siklus), menambahkan kolom `x_plan` (profiles) dan `author_avatar_url` (leads_queue), serta dokumentasi model fallback & penanganan filter Gate 1.
 
 ---
 
@@ -29,7 +29,7 @@ Aplikasi seluler yang baru rilis menghadapi kesulitan besar dalam akuisisi 100 p
 - **Model Monetisasi:** *Pay-Per-Cycle Credit Model.*
   - **Harga per siklus sukses: $0.10** (dipotong **hanya** jika Gate 2 berhasil menghasilkan draf balasan; jika Gate 1 menolak lead, tidak ada biaya).
   - Free tier saat pendaftaran: kredit awal senilai **$2.00** (setara 20 siklus) agar pengguna baru bisa mencoba produk tanpa kartu kredit.
-  - **(Free Demo Mingguan):** setiap akun dapat **3 siklus gratis per minggu**, terpisah dari `credit_balance` dan tidak pernah habis permanen (reset otomatis tiap 7 hari). Ini jalan terus meskipun saldo kredit user sudah $0 — tujuannya supaya produk tetap punya nilai buat dicoba ulang tiap minggu (retention hook), dan juri/pengunjung hackathon bisa coba tanpa perlu top up.
+  - **(Free Demo Mingguan):** setiap akun dapat **5 siklus gratis per minggu**, terpisah dari `credit_balance` dan tidak pernah habis permanen (reset otomatis tiap 7 hari). Ini jalan terus meskipun saldo kredit user sudah $0 — tujuannya supaya produk tetap punya nilai buat dicoba ulang tiap minggu (retention hook), dan juri/pengunjung hackathon bisa coba tanpa perlu top up.
 
 ### 2.1 Sistem Top-Up Kredit — Fleksibel (Baru di v3.0)
 
@@ -116,7 +116,7 @@ Batas waktu eksekusi maksimal: **tidak boleh melebihi 150 detik**.
 #### Gate 1: Relevance & Sentiment Classifier (The Filter)
 - **Input:** teks mentah dari postingan media sosial.
 - **Task:** menentukan apakah teks benar-benar mengeluhkan/membahas kekurangan aplikasi kompetitor yang relevan.
-- **Output:** Boolean (`true`/`false`). Jika `false` → proses berhenti, **tidak ada biaya**.
+- **Output:** Boolean (`true`/`false`). Jika `false` → proses berhenti, **tidak ada biaya**, dan data lead tersebut **langsung dihapus secara permanen dari database (`leads_queue`)** untuk menjaga kebersihan data dan efisiensi database.
 - **Model:** Model gratis dari **OpenRouter** dengan strategi *router + fallback chain* (jika model utama rate-limited/down, otomatis mencoba model berikutnya secara berurutan):
   1. `nvidia/nemotron-3-super-120b-a12b:free` (Primary)
   2. `google/gemma-4-31b-it:free`
@@ -131,12 +131,14 @@ Batas waktu eksekusi maksimal: **tidak boleh melebihi 150 detik**.
   11. `meta-llama/llama-3.2-3b-instruct:free`
   12. `meta-llama/llama-3.3-70b-instruct:free`
 
+  > **Fallback Darurat:** Jika seluruh model gratis OpenRouter gagal, Gate 1 memiliki mekanisme fallback terakhir ke model berbayar **DeepSeek API Resmi (`deepseek-chat`)** agar sistem tidak macet.
+
 ⚠️ Rate limit model gratis (20 rpm/200 rpd) adalah batas nyata. Cukup untuk demo hackathon dan early-stage SaaS, tapi bangun Gate 1 dengan *provider-agnostic* wrapper dari awal.
 
 #### Gate 2: Contextual Promotional Generator (The Closer)
 - **Input:** teks postingan yang lolos Gate 1 + profil aplikasi user (app_name, app_description, app_url, app_category, target_audience, tone_of_voice, differentiators, dan opsional company_name).
 - **Task:** menghasilkan draf balasan yang ramah, natural, tidak terlihat seperti bot spam.
-- **Output:** teks draf balasan siap pakai (< 280 karakter untuk X, < 500 karakter untuk IG) + pemotongan **$0.10** dari `credit_balance`.
+- **Output:** teks draf balasan siap pakai (panjang karakter disesuaikan limit platform: maksimal 500 karakter untuk Instagram, sedangkan untuk X didasarkan pada `x_plan` milik profil user: **262 karakter** untuk free plan, dan **25.000 karakter** jika user memiliki paid plan/X Premium) + pemotongan **$0.10** dari `credit_balance`.
 - **Model:** **DeepSeek V4 Flash** via official DeepSeek API (`deepseek-chat` secara langsung). Jika saldo habis / ingin fallback ke model gratis (atau saat API DeepSeek mengalami gangguan), gunakan strategi *fallback chain* model gratis berikut secara berurutan via OpenRouter:
   1. `nvidia/nemotron-3-super-120b-a12b:free` (Fallback Utama)
   2. `qwen/qwen3-next-80b-a3b-instruct:free`
@@ -150,7 +152,7 @@ Batas waktu eksekusi maksimal: **tidak boleh melebihi 150 detik**.
   10. `meta-llama/llama-3.3-70b-instruct:free`
 
 **Alur biaya:**
-- Gate 1 gagal → gratis, lead ditandai `REJECTED`.
+- Gate 1 gagal → gratis, lead langsung dihapus dari database.
 - Gate 1 lolos → panggil `consume_cycle_credit()`:
   - Masih ada free demo minggu ini → pakai itu (gratis, tercatat `FREE_DEMO`).
   - Demo habis, saldo cukup → potong $0.10 (`GATE_2_GENERATION_FEE`).
@@ -198,7 +200,7 @@ Dashboard dipisah menjadi **dua tab/panel terpisah**: satu untuk X, satu untuk I
 
 #### C.6. Credit Balance & Free Demo Widget
 - Selalu terlihat di header dashboard.
-- Tampilkan: saldo kredit real-time (`$X.XX`), sisa kuota demo minggu ini (`X/3 demo gratis tersisa, reset Senin`), tombol **"Top Up"** yang buka panel top-up.
+- Tampilkan: saldo kredit real-time (`$X.XX`), sisa kuota demo minggu ini (`X/5 demo gratis tersisa, reset Senin`), tombol **"Top Up"** yang buka panel top-up.
 
 #### C.7. Low Balance Guard
 - Kalau free demo **dan** `credit_balance < $0.10`, pipeline berhenti memproses lead baru untuk user tsb (status lead jadi `PENDING_PAYMENT`).
@@ -224,9 +226,10 @@ Dashboard dipisah menjadi **dua tab/panel terpisah**: satu untuk X, satu untuk I
   - `tone_of_voice` — pilihan tone balasan AI: `professional` | `friendly` | `casual` | `playful` (wajib).
   - `differentiators` — 3 poin keunggulan unik (Unique Selling Points) aplikasi dibanding kompetitor (wajib).
   - `company_name` — nama perusahaan/studio pengembang aplikasi (opsional).
+  - `x_plan` — pilihan tipe akun X (Twitter) milik user: `free` (karakter limit 262) | `paid` (X Premium, karakter limit 25.000) (wajib).
   - `onboarding_completed` di-set `TRUE` otomatis begitu semua field wajib terisi.
 - **E.2. Route Guard:** middleware Next.js cek `onboarding_completed` — kalau `FALSE`, redirect paksa ke `/profile`.
-- **E.3. Prompt Gate 2 kaya konteks:** system prompt Gate 2 menyertakan `app_name`, `app_description`, `app_url`, `app_category`, `target_audience`, `tone_of_voice`, `differentiators`.
+- **E.3. Prompt Gate 2 kaya konteks:** system prompt Gate 2 menyertakan `app_name`, `app_description`, `app_url`, `app_category`, `target_audience`, `tone_of_voice`, `differentiators`, dan membatasi panjang draf sesuai dengan `x_plan` user.
 - **E.4. Edit ulang:** user bisa meng-update profil aplikasi kapan saja lewat `/profile`.
 
 ### 4.6 Module F: Billing & Credit Ledger
@@ -256,7 +259,7 @@ Landing page adalah halaman publik di route `/` — dan sekarang **satu-satunya 
 - **Headline (H1):** *"Turn competitor complaints into your next customers."* — kata kunci `next customers` di-highlight warna accent.
 - **Sub-headline:** *"Undercut watches X and Instagram for people complaining about your competitors — AI drafts the reply, you just hit send."*
 - **CTA utama:** tombol besar **"Start Free — No Card Needed"** → `/login`.
-- **Sub-CTA:** teks kecil di bawah tombol: *"3 free replies every week. Forever."*
+- **Sub-CTA:** teks kecil di bawah tombol: *"5 free replies every week. Forever."*
 - **Social proof — jujur, bukan angka fiktif:** karena ini produk baru dari hackathon, **jangan pasang angka user palsu** kayak "Trusted by 5000+ users" (TweetHunter bisa pasang itu karena sudah punya user asli, kita belum). Ganti dengan yang jujur & tetap meyakinkan:
   - Badge: *"Built for HackOnVibe 2026"*
   - Atau live counter jujur: *"X leads processed this week"* (angka asli dari `leads_queue`, bisa mulai dari kecil, tetap kredibel karena nyata)
@@ -349,7 +352,7 @@ Karena tidak ada docs page lagi, ini jadi bukti "show don't tell" langsung di la
 #### G.8. Pricing Section
 (Dipertahankan dari v3.0, sudah solid)
 - Judul: *"Simple, transparent pricing."* / Sub: *"No subscription. Pay for what you use."*
-- Card utama: **$0.10 per successful reply draft**, gratis kalau Gate 1 reject, **$2.00 free credits** saat daftar, **3 free cycles every week forever**.
+- Card utama: **$0.10 per successful reply draft**, gratis kalau Gate 1 reject, **$2.00 free credits** saat daftar, **5 free cycles every week forever**.
 - Grid template top-up ($2/$5/$10/$15/$30/$50/$100) + catatan "or enter any amount from $2".
 - CTA: **"Get Started Free"**.
 
@@ -378,7 +381,7 @@ Section panjang, grid multi-kolom, checklist sederhana (pola TweetHunter "All th
 **Billing**
 - ✅ Bayar per pemakaian, tanpa langganan bulanan
 - ✅ Top-up nilai bebas mulai $2, atau template cepat
-- ✅ 3 siklus gratis tiap minggu, selamanya
+- ✅ 5 siklus gratis tiap minggu, selamanya
 - ✅ Riwayat transaksi transparan
 
 **Keamanan & Data**
@@ -477,10 +480,11 @@ erDiagram
         jsonb differentiators
         string image_placeholder_url
         decimal credit_balance "USD, default 2.00 free tier"
-        integer free_demo_credits_remaining "default 3, reset tiap 7 hari"
+        integer free_demo_credits_remaining "default 5, reset tiap 7 hari"
         timestamp free_demo_reset_at
         string payment_gateway_customer_id
         string company_name "optional"
+        string x_plan "free | paid"
         timestamp created_at
     }
 
@@ -500,6 +504,7 @@ erDiagram
         string platform "X | INSTAGRAM"
         string external_post_id UK
         string author_username
+        string author_avatar_url "nullable"
         text raw_content
         string post_url
         boolean gate_1_passed
@@ -523,7 +528,7 @@ erDiagram
     PAYMENT_TRANSACTIONS {
         uuid id PK
         uuid profile_id FK
-        string gateway "midtrans | xendit"
+        string gateway "stripe | midtrans | xendit"
         string gateway_order_id UK
         decimal top_up_amount_usd "nilai yang dibayar user (USD)"
         decimal credit_granted_usd "kredit yang diterima (termasuk bonus jika ada)"
@@ -535,7 +540,7 @@ erDiagram
 
     WEBHOOK_EVENTS {
         uuid id PK
-        string gateway "midtrans | xendit"
+        string gateway "stripe | midtrans | xendit"
         string event_id UK "untuk idempotency check"
         jsonb raw_payload
         timestamp processed_at
@@ -569,9 +574,10 @@ CREATE TABLE profiles (
 
     -- Wallet & Free Demo
     credit_balance DECIMAL(10, 4) DEFAULT 2.0000, -- Free tier: $2.00 (~20 siklus)
-    free_demo_credits_remaining INTEGER DEFAULT 3, -- reset tiap 7 hari, terpisah dari credit_balance
+    free_demo_credits_remaining INTEGER DEFAULT 5, -- reset tiap 7 hari, terpisah dari credit_balance
     free_demo_reset_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '7 days'),
     payment_gateway_customer_id VARCHAR(100),
+    x_plan VARCHAR(20) DEFAULT 'free' CHECK (x_plan IN ('free', 'paid')),
 
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -630,6 +636,7 @@ CREATE TABLE leads_queue (
     platform VARCHAR(20) CHECK (platform IN ('X', 'INSTAGRAM')),
     external_post_id VARCHAR(100) UNIQUE NOT NULL,
     author_username VARCHAR(100) NOT NULL,
+    author_avatar_url TEXT,
     raw_content TEXT NOT NULL,
     post_url TEXT NOT NULL,
     gate_1_passed BOOLEAN DEFAULT FALSE,
@@ -682,10 +689,10 @@ BEGIN
     -- Reset kuota demo mingguan kalau sudah lewat 7 hari
     IF NOW() >= v_profile.free_demo_reset_at THEN
         UPDATE profiles
-        SET free_demo_credits_remaining = 3,
+        SET free_demo_credits_remaining = 5,
             free_demo_reset_at = NOW() + INTERVAL '7 days'
         WHERE id = p_profile_id;
-        v_profile.free_demo_credits_remaining := 3;
+        v_profile.free_demo_credits_remaining := 5;
     END IF;
 
     -- Prioritas 1: pakai free demo dulu kalau masih ada
@@ -724,7 +731,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TABLE payment_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    gateway VARCHAR(20) NOT NULL DEFAULT 'midtrans' CHECK (gateway IN ('midtrans', 'xendit')),
+    gateway VARCHAR(20) NOT NULL DEFAULT 'stripe' CHECK (gateway IN ('stripe', 'midtrans', 'xendit')),
     gateway_order_id VARCHAR(100) UNIQUE NOT NULL,
     top_up_amount_usd DECIMAL(10, 4) NOT NULL, -- nilai yang dibayar user dalam USD
     credit_granted_usd DECIMAL(10, 4) NOT NULL, -- kredit diterima (termasuk bonus jika ada)
@@ -896,4 +903,4 @@ TOPUP_BONUS_TIER_2_PERCENT=5
 
 ## 14. Instruksi Eksekusi untuk AI Agent
 
-> *"Act as a Senior Full-Stack Engineer. Using the PRD v4.0 and Supabase SQL schema above, initialize a Next.js App Router project with TailwindCSS and framer-motion. Build: (1) a public landing page at `/` that is the single source of truth for the product (no separate docs page) — Navbar (scroll-anchor links, no Docs link), Hero with a floating lead-card mockup (CSS 3D + framer-motion float animation as the guaranteed-to-ship version; optionally upgrade the centerpiece to a Spline scene via @splinetool/react-spline if time allows, per §G.2.1) and honest social proof (no fabricated user-count numbers), Problem Agitation (rhetorical-question hook + manual-vs-tool comparison table), How It Works (5 steps with scroll-reveal), a Value Pillars strip, three Feature Deep-Dive blocks each with a numbered 'tactic example' (mirroring TweetHunter's pattern), a static Live Interactive Demo widget (hardcoded complaint→reply example, not calling real Gate 1/2), Pricing (pay-per-use + flexible top-up), a Full Feature Reference checklist section, and an expanded FAQ accordion that absorbs what would have been docs content; (2) Supabase Auth with Google OAuth only and a Postgres trigger auto-creating the profiles row; (3) a 3-step onboarding wizard at /profile (not a single long form) with a progress bar and a live reply-style preview on the final step, gated by middleware until onboarding_completed = true; (4) a split dashboard — /dashboard/x (keyword/query input, X-only lead queue) and /dashboard/instagram (username input, IG-only lead queue) — with an empty-state guided checklist for first-time users, Supabase Realtime subscriptions on leads_queue inserts for live toast notifications, optimistic UI on reply actions, and a one-time coachmark on the first lead card; (5) the scraper ingestion endpoint — X via twitter-api45 /search.php with free-text keyword, Instagram via instagram-scraper-stable-api get_user_posts.php with username — with dedup and mock fallback; (6) the Double-Gate LLM pipeline via OpenRouter with a strict 150-second timeout, calling consume_cycle_credit before Gate 2; (7) a flexible top-up flow at /billing — any USD amount (min $2) or preset templates, bonus tiers for $50+/$100+, Stripe Checkout Session with a signature-verified idempotent webhook handler; and (8) a soft-paywall banner (not a blocking modal) when both free demo and credit_balance are exhausted. Treat RLS isolation, onboarding gating, billing correctness, the X/IG input difference (keyword vs username), and the landing page being the sole explanatory surface (since there's no docs page) as first-class requirements."*
+> *"Act as a Senior Full-Stack Engineer. Using the PRD v4.1 and Supabase SQL schema above, initialize a Next.js App Router project with TailwindCSS and framer-motion. Build: (1) a public landing page at `/` that is the single source of truth for the product (no separate docs page) — Navbar (scroll-anchor links, no Docs link), Hero with a floating lead-card mockup (CSS 3D + framer-motion float animation as the guaranteed-to-ship version; optionally upgrade the centerpiece to a Spline scene via @splinetool/react-spline if time allows, per §G.2.1) and honest social proof (no fabricated user-count numbers), Problem Agitation (rhetorical-question hook + manual-vs-tool comparison table), How It Works (5 steps with scroll-reveal), a Value Pillars strip, three Feature Deep-Dive blocks each with a numbered 'tactic example' (mirroring TweetHunter's pattern), a static Live Interactive Demo widget (hardcoded complaint→reply example, not calling real Gate 1/2), Pricing (pay-per-use + flexible top-up), a Full Feature Reference checklist section, and an expanded FAQ accordion that absorbs what would have been docs content; (2) Supabase Auth with Google OAuth only and a Postgres trigger auto-creating the profiles row; (3) a 3-step onboarding wizard at /profile (not a single long form) with a progress bar and a live reply-style preview on the final step, gated by middleware until onboarding_completed = true; (4) a split dashboard — /dashboard/x (keyword/query input, X-only lead queue) and /dashboard/instagram (username input, IG-only lead queue) — with an empty-state guided checklist for first-time users, Supabase Realtime subscriptions on leads_queue inserts for live toast notifications, optimistic UI on reply actions, and a one-time coachmark on the first lead card; (5) the scraper ingestion endpoint — X via twitter-api45 /search.php with free-text keyword, Instagram via instagram-scraper-stable-api get_user_posts.php with username — with dedup and mock fallback; (6) the Double-Gate LLM pipeline via OpenRouter with a strict 150-second timeout, calling consume_cycle_credit before Gate 2; (7) a flexible top-up flow at /billing — any USD amount (min $2) or preset templates, bonus tiers for $50+/$100+, Stripe Checkout Session with a signature-verified idempotent webhook handler; and (8) a soft-paywall banner (not a blocking modal) when both free demo and credit_balance are exhausted. Treat RLS isolation, onboarding gating, billing correctness, the X/IG input difference (keyword vs username), and the landing page being the sole explanatory surface (since there's no docs page) as first-class requirements."*

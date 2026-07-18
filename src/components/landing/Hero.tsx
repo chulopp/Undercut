@@ -46,7 +46,7 @@ function ComplaintCard() {
         </div>
 
         <p className="mt-3 text-sm leading-relaxed text-text/90">
-          Ugh, the built-in Notes app on my new <span className="text-accent hover:underline cursor-pointer">@IphOneNotes</span> keeps crashing everytime I open it. Lost all my drafts twice this week. Why is there no alternative? 😤
+          Why is <span className="text-accent hover:underline cursor-pointer">@Trillo</span> so incredibly slow today? 😭 It takes like 10 seconds just to load our sprint board. Our team is wasting so much time. Anyone know a fast, modern alternative?
         </p>
 
         <p className="mt-3 text-xs text-muted">
@@ -98,9 +98,7 @@ function ReplyCard() {
         </div>
 
         <p className="mt-3 text-sm leading-relaxed text-text/90">
-          Sorry to hear the drafts keep disappearing from your Iph one — that&apos;s rough. I made
-          <span className="text-accent font-semibold"> @NoteNest</span> exactly for this: autosave
-          every keystroke, offline-first. Free trial if you want to test it 👇
+          Hey, feel that pain, speed is everything. We built <span className="text-accent font-semibold">@FlowTask</span> to be blazing fast—sub-100ms keyboard-first navigation and offline sync. Happy to set you up with a free trial for your team! 👇
         </p>
 
         <p className="mt-3 text-xs text-muted">
@@ -203,7 +201,44 @@ export function Hero() {
           </motion.div>
         </div>
 
-        <div className="relative mx-auto mt-16 h-[340px] max-w-4xl">
+        {/* 3-Step How It Works */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mx-auto mt-20 w-fit max-w-full rounded-2xl md:rounded-full border border-border bg-surface/30 px-8 py-4 md:py-3 shadow-[0_8px_30px_rgb(0,0,0,0.4)] backdrop-blur-xs"
+        >
+          <div className="flex flex-col items-center justify-center gap-4 md:flex-row md:gap-6 text-sm">
+            {/* Step 1 */}
+            <div className="flex items-center gap-2 select-none whitespace-nowrap">
+              <span className="text-white/40 font-bold font-sans text-xs">01.</span>
+              <span className="text-white font-medium font-sans">Track Competitors</span>
+              <span className="text-[10px] text-muted font-sans uppercase tracking-wider bg-border/40 px-1.5 py-0.5 rounded-md">X & IG</span>
+            </div>
+
+            {/* Separator */}
+            <span className="hidden text-border md:inline select-none">→</span>
+
+            {/* Step 2 */}
+            <div className="flex items-center gap-2 select-none whitespace-nowrap">
+              <span className="text-white/40 font-bold font-sans text-xs">02.</span>
+              <span className="text-white font-medium font-sans">AI Writes Reply</span>
+              <span className="text-[10px] text-muted font-sans uppercase tracking-wider bg-border/40 px-1.5 py-0.5 rounded-md">Tailored</span>
+            </div>
+
+            {/* Separator */}
+            <span className="hidden text-border md:inline select-none">→</span>
+
+            {/* Step 3 */}
+            <div className="flex items-center gap-2 select-none whitespace-nowrap">
+              <span className="text-white/40 font-bold font-sans text-xs">03.</span>
+              <span className="text-white font-medium font-sans">Hit Send</span>
+              <span className="text-[10px] text-muted font-sans uppercase tracking-wider bg-border/40 px-1.5 py-0.5 rounded-md">One Click</span>
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="relative mx-auto mt-24 h-[340px] max-w-4xl">
           <ComplaintCard />
           <ReplyCard />
 
