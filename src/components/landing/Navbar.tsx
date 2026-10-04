@@ -35,19 +35,36 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-    };
-    getSession();
+    let active = true;
+    const checkAuth = async () => {
+      // Check demo session first
+      const { isDemoSession } = await import("@/lib/demo-storage");
+      if (isDemoSession() && active) {
+        // Create synthetic demo user
+        setUser({ id: "demo-user-undercut", email: "demo@undercut.app" } as User);
+        return;
+      }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      subscription.unsubscribe();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (active) setUser(session?.user ?? null);
+      } catch {
+        // Offline / Supabase unreachable
+      }
     };
+    checkAuth();
+
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (active) setUser(session?.user ?? null);
+      });
+      return () => {
+        active = false;
+        subscription.unsubscribe();
+      };
+    } catch {
+      return () => { active = false; };
+    }
   }, [supabase]);
 
   useEffect(() => {

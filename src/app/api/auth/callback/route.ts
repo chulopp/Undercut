@@ -10,19 +10,8 @@ export async function GET(request: Request) {
     const { error, data } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error && data.user) {
-      // Fetch user profile onboarding status
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('onboarding_completed')
-        .eq('id', data.user.id)
-        .single()
-      
-      // If onboarding is completed, send them to dashboard, otherwise redirect to onboarding wizard
-      if (profile?.onboarding_completed) {
-        return NextResponse.redirect(`${origin}/dashboard/x`)
-      } else {
-        return NextResponse.redirect(`${origin}/profile`)
-      }
+      // Always redirect to dashboard, onboarding is handled contextually inside the dashboard
+      return NextResponse.redirect(`${origin}/dashboard/x`)
     }
   }
 

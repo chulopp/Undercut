@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CreditCard, User, LogOut, Home } from "lucide-react";
+import { CreditCard, User, LogOut, Home, RotateCcw } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { XIcon, InstagramIcon } from "@/components/ui/BrandIcons";
 import { createClient } from "@/utils/supabase/client";
+import { isDemoSession, clearDemoSession, resetDemoSession } from "@/lib/demo-storage";
 
 const X_PATH = "/dashboard/x";
 const IG_PATH = "/dashboard/instagram";
@@ -29,8 +30,13 @@ export function Sidebar({
 
   const handleSignOut = async (e: React.MouseEvent) => {
     e.preventDefault();
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    clearDemoSession();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Offline fallback
+    }
     router.push("/");
   };
 
@@ -93,6 +99,18 @@ export function Sidebar({
           <Home size={16} />
           <span className="flex-1">Back to landing page</span>
         </Link>
+        {isDemoSession() && (
+          <button
+            onClick={() => {
+              resetDemoSession();
+              window.location.reload();
+            }}
+            className={`${itemClass(false)} w-full text-left cursor-pointer text-accent hover:bg-accent/10 hover:text-accent font-medium`}
+          >
+            <RotateCcw size={16} />
+            <span className="flex-1">Reset Demo (5 Tokens)</span>
+          </button>
+        )}
         <button
           onClick={handleSignOut}
           className={`${itemClass(false)} w-full text-left cursor-pointer`}

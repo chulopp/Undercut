@@ -1,3 +1,5 @@
+> ⚠️ **Internal Document** — This is a detailed internal product & database spec. Not intended for public contribution. See [PRODUCT.md](file:///d:/Fallah's%20File/Code/Personal%20Project/Undercut/PRODUCT.md) for the public-facing product overview.
+
 # PRODUCT REQUIREMENTS DOCUMENT (PRD) & ERD
 ## Undercut — Competitor FUD Interceptor (AI Social Lead Gen, Full SaaS Edition)
 

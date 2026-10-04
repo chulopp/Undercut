@@ -73,12 +73,22 @@ export const FUD_KEYWORDS: Record<string, string[]> = {
   ],
 }
 
-// Spam/promotional signals that reduce confidence
+// Spam/promotional signals that reduce confidence (Indonesian and English)
 export const SPAM_SIGNALS = [
   'giveaway', 'follow for follow', 'f4f', 'dm for', 'promo code', 'discount code',
   'coupon', 'affiliate', 'sponsored', 'partner', 'collab', 'collaboration',
   'check out my', 'visit my', 'click here', 'link in bio', 'free trial',
   '#ad', '#sponsored', '#collab',
+  // English Spam/Commercial Jargon
+  'wts', 'wtb', 'buy now', 'order now', 'referral code', 'sign up bonus',
+  'fast shipping', 'best price', 'hiring', 'job opening', 'passive income',
+  'crypto gem', 'airdrop', 'whitelist', 'nft drop', 'hot deal', 'deals of the day',
+  'in stock', 'followers promo', 'dm for info',
+  // Indonesian Spam/Commercial Jargon
+  'ready stock', 'ready akun', 'jasa followers', 'jasa joki', 'paylater',
+  'gacor', 'judi', 'slot', 'ongkir', 'cod', 'rekber', 'link shopee', 'shope.ee',
+  'tokopedia.link', 'gratis ongkir', 'jasa tambah', 'open member', 'grup wa',
+  'bantu retweet', 'saling follow', 'banting harga'
 ]
 
 // Positive signals that indicate the post is NOT a complaint
@@ -105,13 +115,15 @@ export interface FuzzyMatchResult {
  *   +0.15  per matched FUD keyword (capped contribution)
  *   -0.40  if strong positive signals detected
  *   -0.30  if spam signals detected
+ *   -0.35  if poster username indicates bot/promo
  *   -0.20  if post is too short (< 20 chars)
  *
  * Threshold: 0.20 to pass (very permissive — let Gate 1 LLM do hard filtering)
  */
 export function fuzzyPreFilter(
   text: string,
-  competitorName: string
+  competitorName: string,
+  authorUsername?: string
 ): FuzzyMatchResult {
   const normalized = text.toLowerCase().trim()
   const matchedKeywords: string[] = []
@@ -150,6 +162,14 @@ export function fuzzyPreFilter(
   // 4. Spam signals → downgrade
   const isSpam = SPAM_SIGNALS.some((s) => normalized.includes(s.toLowerCase()))
   if (isSpam) score -= 0.30
+
+  // 4b. Username bot/spam patterns -> downgrade
+  if (authorUsername) {
+    const usernameLower = authorUsername.toLowerCase()
+    const botPatterns = ['_bot', 'bot_', 'promobot', 'giveaway', 'dealhunter', 'spambot', 'fudbot', 'dropship', 'store', 'shop']
+    const isBot = botPatterns.some((pattern) => usernameLower.includes(pattern))
+    if (isBot) score -= 0.35
+  }
 
   // 5. Too short → likely noise
   if (normalized.length < 20) score -= 0.20

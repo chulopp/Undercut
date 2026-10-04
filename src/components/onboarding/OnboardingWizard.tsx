@@ -152,8 +152,11 @@ function CategoryDropdown({
 
 export default function OnboardingWizard({
   initial,
+  onComplete,
 }: {
   initial?: ProfileInput & { onboarding_completed?: boolean };
+  /** When provided, called after save instead of navigating to /dashboard/x */
+  onComplete?: () => void;
 }) {
   const isEdit = !!initial?.onboarding_completed;
   const [step, setStep] = useState(isEdit ? 0 : 1);
@@ -297,8 +300,13 @@ export default function OnboardingWizard({
     try {
       await saveProfile(form);
       toast.success("Profile saved — welcome aboard!");
-      // Force full page load to bypass client-side router cache and make sure middleware sees updated profile.
-      window.location.href = "/dashboard/x";
+      if (onComplete) {
+        // Modal mode: close modal and let the caller handle next steps
+        onComplete();
+      } else {
+        // Standalone page mode: force full page load so middleware sees updated profile
+        window.location.href = "/dashboard/x";
+      }
     } catch {
       toast.error("Couldn't save profile");
       setSaving(false);

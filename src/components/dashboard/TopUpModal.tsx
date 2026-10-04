@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CreditCard, Sparkles, X, Check } from "lucide-react";
+import { CreditCard, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
-import { createTopUp } from "@/lib/data";
 
 const TEMPLATES = [
   { amount: 2, label: "$2", cycles: "20" },
@@ -19,8 +18,6 @@ const TEMPLATES = [
   { amount: 200, label: "$200", cycles: "2000" },
 ];
 
-const USD_TO_IDR = 16000;
-
 export function TopUpModal({
   open,
   onClose,
@@ -31,26 +28,12 @@ export function TopUpModal({
   preselectAmount?: number;
 }) {
   const [amount, setAmount] = useState<number>(preselectAmount ?? 10);
-  const [loading, setLoading] = useState(false);
   const toast = useToast();
 
-  const handleConfirm = async () => {
-    if (amount < 2) {
-      toast.error("Minimum top-up is $2");
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await createTopUp(amount);
-      toast.success(`Top up $${amount.toFixed(2)} initiated. Redirecting to Stripe…`);
-      setTimeout(() => {
-        window.location.href = res.redirectUrl;
-      }, 1000);
-    } catch {
-      toast.error("Failed to start top-up. Try again.");
-    } finally {
-      setLoading(false);
-    }
+  const handleConfirm = () => {
+    toast.warning(
+      "Fitur Top-Up saat ini dinonaktifkan (Mode Portofolio Demo). Gunakan free tokens yang telah disediakan."
+    );
   };
 
   return (
@@ -67,7 +50,7 @@ export function TopUpModal({
           aria-label="Top up credits"
         >
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
             onClick={onClose}
           />
           <motion.div
@@ -80,9 +63,9 @@ export function TopUpModal({
             <button
               onClick={onClose}
               aria-label="Close"
-              className="absolute right-4 top-4 rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text"
+              className="absolute right-4 top-4 rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text cursor-pointer"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
 
             <div className="flex items-center gap-2 text-text">
@@ -93,6 +76,18 @@ export function TopUpModal({
               Pay per reply draft. No subscription. Credits never expire.
             </p>
 
+            {/* Portfolio Mode Warning Banner */}
+            <div className="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-3.5 text-left text-xs text-warning">
+              <div className="flex items-center gap-2 font-semibold">
+                <AlertTriangle size={15} className="shrink-0 text-warning" />
+                <span>Mode Portofolio / Pemeliharaan</span>
+              </div>
+              <p className="mt-1 text-[11px] leading-relaxed text-text/80">
+                Integrasi pembayaran Stripe dinonaktifkan untuk demonstrasi portofolio.
+                Anda tetap dapat menguji antarmuka pilihan nominal di bawah ini.
+              </p>
+            </div>
+
             <div className="mt-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">
                 Quick templates
@@ -102,9 +97,9 @@ export function TopUpModal({
                   <button
                     key={t.amount}
                     onClick={() => setAmount(t.amount)}
-                    className={`rounded-xl border px-2 py-2.5 text-center transition-colors ${
+                    className={`rounded-xl border px-2 py-2.5 text-center transition-colors cursor-pointer ${
                       amount === t.amount
-                        ? "border-accent bg-accent/10 text-accent"
+                        ? "border-accent bg-accent/10 text-accent font-semibold"
                         : "border-border bg-surface-2 text-text hover:border-accent/40"
                     }`}
                   >
@@ -120,7 +115,7 @@ export function TopUpModal({
                 Custom amount (min $2)
               </p>
               <div className="mt-2 flex items-center gap-2">
-                <span className="text-sm text-muted">$</span>
+                <span className="text-sm text-muted font-mono">$</span>
                 <Input
                   type="number"
                   min={2}
@@ -144,16 +139,10 @@ export function TopUpModal({
             <div className="mt-5 flex items-center gap-2">
               <Button
                 onClick={handleConfirm}
-                disabled={loading || amount < 2}
-                className="flex-1"
+                disabled={amount < 2}
+                className="flex-1 cursor-pointer"
               >
-                {loading ? (
-                  "Processing…"
-                ) : (
-                  <>
-                    <CreditCard size={16} /> Pay ${amount.toFixed(2)}
-                  </>
-                )}
+                <CreditCard size={16} /> Pay ${amount.toFixed(2)} (Demo Offline)
               </Button>
             </div>
 

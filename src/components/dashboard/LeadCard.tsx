@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Send, Edit3, Check, X, Timer, ArrowUpRight, Loader2, MessageSquarePlus, Trash2 } from "lucide-react";
+import { Send, Edit3, Check, X, ArrowUpRight, Loader2, MessageSquarePlus, Trash2 } from "lucide-react";
 import { XIcon, InstagramIcon } from "@/components/ui/BrandIcons";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { useOnboarding } from "@/components/dashboard/OnboardingContext";
 import { markLeadReplied, updateLeadDraft, generateLeadReply, getProfile, deleteLead } from "@/lib/data";
 import type { Lead } from "@/lib/types";
 
@@ -60,11 +61,24 @@ export function LeadCard({
   }, []);
 
   const toast = useToast();
+  const { requestOnboarding } = useOnboarding();
   const isX = lead.platform === "X";
   const PlatformIcon = isX ? XIcon : InstagramIcon;
   const charLimit = isX ? (xPlan === "paid" ? 25000 : 262) : 500;
 
-  const handleGenerate = async () => {
+  const handleGenerateRef = useRef<(() => Promise<void>) | null>(null);
+
+  const handleGenerate = useCallback(async () => {
+    // Check profile completion before hitting the pipeline
+    const profile = await getProfile().catch(() => null);
+    if (!profile?.onboarding_completed) {
+      requestOnboarding(lead.id, () => {
+        // After wizard completes, auto-trigger draft generation
+        handleGenerateRef.current?.();
+      });
+      return;
+    }
+
     setGenerating(true);
     try {
       const updated = await generateLeadReply(lead.id);
@@ -76,7 +90,7 @@ export function LeadCard({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "unknown";
       if (msg === "PENDING_PAYMENT") {
-        toast.error("Insufficient balance. Top up to continue!");
+        toast.error("Kuota demo token habis (0/5). Silakan reset demo dari sidebar untuk mencoba lagi.");
       } else if (msg === "REJECTED") {
         toast.error("This post didn't pass AI relevance check.");
         onDeleted(lead.id); // Remove card instantly from UI on AI rejection
@@ -86,7 +100,9 @@ export function LeadCard({
     } finally {
       setGenerating(false);
     }
-  };
+  }, [lead.id, requestOnboarding, toast, onDeleted]);
+
+  handleGenerateRef.current = handleGenerate;
 
   const handleReply = async () => {
     if (replying) return;

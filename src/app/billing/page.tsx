@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CreditCard, History, Loader2, Wallet } from "lucide-react";
+import { ArrowLeft, CreditCard, History, Loader2, Wallet, AlertTriangle, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { isDemoSession, resetDemoSession } from "@/lib/demo-storage";
 import {
   createTopUp,
   getBillingStatus,
@@ -60,6 +61,12 @@ export default function BillingView() {
   }, []);
 
   const handleTopUp = async () => {
+    if (isDemoSession()) {
+      toast.warning(
+        "Fitur Top-Up saat ini dalam pemeliharaan (Mode Portofolio Demo). Gunakan free demo tokens yang telah disediakan."
+      );
+      return;
+    }
     if (customAmount < 2) {
       toast.error("Minimum top-up is $2");
       return;
@@ -106,39 +113,68 @@ export default function BillingView() {
         </p>
       </header>
 
+      {/* Portfolio Mode Notice */}
+      <div className="mt-6 rounded-2xl border border-warning/30 bg-warning/10 p-4 text-xs text-warning">
+        <div className="flex items-center gap-2 font-bold text-sm mb-1">
+          <AlertTriangle size={17} className="shrink-0 text-warning" />
+          <span>Payment Gateway: Offline (Mode Portofolio)</span>
+        </div>
+        <p className="text-text/80 leading-relaxed text-xs">
+          Sistem pembayaran Stripe dinonaktifkan untuk demonstrasi portofolio.
+          Anda dapat menjelajah dan menguji fitur AI generator secara gratis dengan token yang tersedia di browser Anda.
+        </p>
+      </div>
+
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
-            Current balance
-          </h3>
-          {loadingStatus || !status ? (
-            <Skeleton className="mt-3 h-12 w-32" />
-          ) : (
-            <>
-              <div className="mt-3 text-4xl font-bold text-text">
-                ${status.credit_balance.toFixed(2)}
-              </div>
-              <div className="mt-4 space-y-2 text-sm text-muted">
-                <div className="flex items-center justify-between">
-                  <span>Free demo this week</span>
-                  <span className="font-semibold text-text">
-                    {status.free_demo_credits_remaining}/5
-                  </span>
+        <Card className="lg:col-span-1 flex flex-col justify-between">
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+              Current balance
+            </h3>
+            {loadingStatus || !status ? (
+              <Skeleton className="mt-3 h-12 w-32" />
+            ) : (
+              <>
+                <div className="mt-3 text-4xl font-bold text-text">
+                  ${status.credit_balance.toFixed(2)}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>Replied total</span>
-                  <span className="font-semibold text-text">
-                    {status.leads_replied_total}
-                  </span>
+                <div className="mt-4 space-y-2 text-sm text-muted">
+                  <div className="flex items-center justify-between">
+                    <span>Free demo tokens</span>
+                    <span className="font-semibold text-accent">
+                      {status.free_demo_credits_remaining}/5
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Replied total</span>
+                    <span className="font-semibold text-text">
+                      {status.leads_replied_total}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Spent this week</span>
+                    <span className="font-semibold text-text">
+                      ${totalSpentThisWeek.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>Spent this week</span>
-                  <span className="font-semibold text-text">
-                    ${totalSpentThisWeek.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            </>
+              </>
+            )}
+          </div>
+          {isDemoSession() && (
+            <div className="mt-6 pt-4 border-t border-border">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs cursor-pointer text-accent hover:text-accent-hover"
+                onClick={() => {
+                  resetDemoSession();
+                  window.location.reload();
+                }}
+              >
+                <RotateCcw size={13} /> Reset Demo (5 Tokens)
+              </Button>
+            </div>
           )}
         </Card>
 
@@ -199,7 +235,7 @@ export default function BillingView() {
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <>
-                <CreditCard size={16} /> Pay ${customAmount.toFixed(2)}
+                <CreditCard size={16} /> Pay ${customAmount.toFixed(2)} (Demo Offline)
               </>
             )}
           </Button>

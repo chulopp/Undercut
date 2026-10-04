@@ -28,11 +28,13 @@ export async function updateSession(request: NextRequest) {
   )
 
   // IMPORTANT: Do NOT remove getUser() as it is required to refresh the token and update cookies
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // Supabase project may be unreachable or offline (e.g. portfolio mode)
+  }
 
-  // Gating Logic can be integrated here, but we keep this function focused on session refreshing.
-  // We'll return user and response so they can be processed by middleware.ts
   return { supabaseResponse, user }
 }

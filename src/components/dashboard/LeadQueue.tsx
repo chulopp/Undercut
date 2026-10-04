@@ -1,17 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Radar, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import { Loader2, Radar, RefreshCw, Trash2 } from "lucide-react";
 import { LeadCard } from "@/components/dashboard/LeadCard";
+import { InteractiveDemo } from "@/components/dashboard/InteractiveDemo";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { listLeads, triggerScrape, deletePlatformLeads } from "@/lib/data";
 import { createClient } from "@/utils/supabase/client";
+import { isDemoSession } from "@/lib/demo-storage";
 import type { Lead, Platform } from "@/lib/types";
 
 const COACHMARK_KEY = "undercut:coachmark-seen";
+const DEMO_KEY = (platform: Platform) =>
+  `undercut:demo-seen-${platform.toLowerCase()}`;
 
 export function LeadQueue({ platform }: { platform: Platform }) {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -19,6 +23,7 @@ export function LeadQueue({ platform }: { platform: Platform }) {
   const [scraping, setScraping] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [showCoachmark, setShowCoachmark] = useState(false);
+  const [demoDismissed, setDemoDismissed] = useState(false);
   const toast = useToast();
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
   // Track whether a manual scrape is in progress to suppress per-lead Realtime toasts
@@ -41,11 +46,15 @@ export function LeadQueue({ platform }: { platform: Platform }) {
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
     );
 
-  // Initial fetch + auto-scrape on first load if no leads
+  // Initial fetch + demo dismissed check + auto-scrape on first load
   useEffect(() => {
     setLoading(true);
     setShowCoachmark(
       typeof window !== "undefined" && !localStorage.getItem(COACHMARK_KEY)
+    );
+    setDemoDismissed(
+      typeof window !== "undefined" &&
+        !!localStorage.getItem(DEMO_KEY(platform))
     );
 
     fetchLeads().then(async () => {
@@ -65,6 +74,7 @@ export function LeadQueue({ platform }: { platform: Platform }) {
 
   // Supabase Realtime — subscribe to new leads for this platform
   useEffect(() => {
+    if (isDemoSession()) return;
     const supabase = createClient();
 
     // Clean up previous channel if platform changes
@@ -225,6 +235,19 @@ export function LeadQueue({ platform }: { platform: Platform }) {
   if (leads.length === 0) {
     return (
       <div className="space-y-4">
+        <AnimatePresence>
+          {!demoDismissed && (
+            <InteractiveDemo
+              platform={platform}
+              onDismiss={() => {
+                setDemoDismissed(true);
+                if (typeof window !== "undefined") {
+                  localStorage.setItem(DEMO_KEY(platform), "1");
+                }
+              }}
+            />
+          )}
+        </AnimatePresence>
         <EmptyState
           icon={<Radar size={22} />}
           title="No leads for this platform yet"

@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
-import { createServerClient } from '@supabase/ssr'
 
 // Routes that are always public (no auth required)
 const PUBLIC_ROUTES = ['/', '/login', '/privacy', '/terms']
@@ -30,6 +29,12 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Step 2.5: Portfolio / Demo mode bypass
+  const isDemo = request.cookies.get('undercut_demo_mode')?.value === 'true'
+  if (isDemo) {
+    return supabaseResponse
+  }
+
   // Step 3: Not logged in → redirect to / (landing page)
   if (!user) {
     const loginUrl = new URL('/', request.url)
@@ -43,34 +48,9 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Step 5: For protected dashboard/billing routes, check onboarding_completed
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/billing')) {
-    // Use server client (cookies are already refreshed by updateSession)
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll() {
-            // Cookies already set by updateSession
-          },
-        },
-      }
-    )
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('onboarding_completed')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile?.onboarding_completed) {
-      return NextResponse.redirect(new URL('/profile', request.url))
-    }
-  }
+  // Step 5: Dashboard/billing routes are freely accessible once logged in.
+  // Onboarding is triggered contextually on the client side (first "Generate Draft" click)
+  // rather than forcing a redirect — users see an interactive demo first.
 
   return supabaseResponse
 }

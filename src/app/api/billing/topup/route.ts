@@ -17,6 +17,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Maintenance / Portfolio Mode guard
+    if (process.env.ENABLE_LIVE_PAYMENTS !== 'true') {
+      return NextResponse.json(
+        { error: 'Fitur Top-up saat ini dalam pemeliharaan (Mode Portofolio Demo).' },
+        { status: 503 }
+      )
+    }
+
     // 2. Parse body
     const body = await request.json()
     const amountUsd = parseFloat(body.amount_usd)

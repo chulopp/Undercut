@@ -1,329 +1,329 @@
 # DECISIONS.md — Architecture Decision Records
 
-Log keputusan arsitektur besar di Undercut. Format: ADR (Architecture Decision Record).
+Log of major architectural decisions made in Undercut. Format: ADR (Architecture Decision Record).
 
-Setiap entry menjawab tiga pertanyaan: **Apa yang diputuskan? Kenapa? Apa alternatif yang tidak dipilih?**
+Each entry answers three questions: **What was decided? Why? What alternatives were not chosen?**
 
-> Buat keputusan baru: tambahkan entry baru dengan nomor berikutnya. Jangan edit entry yang sudah ada — kalau keputusan berubah, tambahkan entry baru dengan status "Supersedes ADR-NNN".
+> To record a new decision: append a new entry with the next number. Do not modify existing entries — if a decision changes, add a new entry with status "Supersedes ADR-NNN".
 
 ---
 
-## ADR-001: Gate 1 menggunakan OpenRouter (model gratis), bukan DeepSeek langsung
+## ADR-001: Gate 1 Uses OpenRouter (Free Models) instead of DeepSeek Directly
 
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1)
+**Date:** 2026-07 (documented from PRD v4.1)
 **Status:** Accepted
-**File referensi:** `src/lib/pipeline/gate1.ts:11-17`
+**Reference File:** `src/lib/pipeline/gate1.ts:11-17`
 
-**Keputusan:**
-Gate 1 (filter relevansi) menggunakan model gratis via OpenRouter sebagai primary, bukan DeepSeek atau model berbayar.
+**Decision:**
+Gate 1 (relevance classifier) uses free models via OpenRouter as primary, rather than DeepSeek or paid models.
 
-**Alasan:**
-Gate 1 adalah tahap filter — tugasnya hanya menghasilkan `true`/`false` per postingan. Task ini tidak butuh model mahal. Karena Gate 1 dijalankan setiap kali user klik "Generate Draft", menggunakan model gratis berarti tahap ini tidak menambah biaya operasional sama sekali — konsisten dengan prinsip "Gate 1 selalu gratis" yang menjadi nilai jual produk.
+**Rationale:**
+Gate 1 is a filtering stage — its job is only to output a binary `true`/`false` classification per post. This task does not require an expensive model. Since Gate 1 is executed every time a user clicks "Generate Draft", utilizing free models ensures this stage adds zero to operational costs — consistent with the "Gate 1 is always free" product value proposition.
 
-**Alternatif yang dipertimbangkan:**
-- *DeepSeek langsung dari awal* — terlalu mahal untuk task binary classifier. DeepSeek lebih cocok untuk generative task (Gate 2).
-- *Rule-based filter saja (tanpa LLM)* — dipertahankan sebagai Fuzzy Pre-filter (Gate 0/`fud-keywords.ts`), tapi tidak cukup akurat untuk tugas final filter.
+**Alternatives Considered:**
+- *DeepSeek directly from the start* — too expensive for a simple binary classifier task. DeepSeek is better suited for the generative task (Gate 2).
+- *Rule-based filter only (no LLM)* — kept as a Fuzzy Pre-filter (Gate 0 / `fud-keywords.ts`), but not accurate enough for the final classification filter.
 
-**Konsekuensi:**
-- Rate limit nyata: 20 rpm / 200 rpd per model gratis OpenRouter. Cukup untuk early-stage, tapi perlu dimonitor saat volume naik.
-- Fallback chain 8+ model diperlukan untuk resiliensi (lihat ADR-002 tentang emergency fallback ke DeepSeek).
+**Consequences:**
+- Actual rate limits: 20 rpm / 200 rpd per free model on OpenRouter. Sufficient for early staging, but must be monitored as volume grows.
+- An 8+ model fallback chain is required for resilience (see ADR-002 regarding emergency fallback to DeepSeek).
 
 ---
 
-## ADR-002: Gate 2 menggunakan DeepSeek API resmi sebagai primary, bukan OpenRouter
+## ADR-002: Gate 2 Uses Official DeepSeek API as Primary instead of OpenRouter
 
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1)
+**Date:** 2026-07 (documented from PRD v4.1)
 **Status:** Accepted
-**File referensi:** `src/lib/pipeline/gate2.ts:12,19`
+**Reference File:** `src/lib/pipeline/gate2.ts:12,19`
 
-**Keputusan:**
-Gate 2 (generator draf balasan) menggunakan `deepseek-chat` via DeepSeek API resmi sebagai model primary, bukan via OpenRouter.
+**Decision:**
+Gate 2 (reply draft generator) uses `deepseek-chat` via the official DeepSeek API as the primary model, instead of via OpenRouter.
 
-**Alasan:**
-Gate 2 menghasilkan teks yang akan langsung dibaca dan dikirim oleh user. Kualitas output sangat penting di sini — draf yang jelek merusak reputasi user. DeepSeek `deepseek-chat` (V4 Flash) memberikan kualitas lebih konsisten dan latency lebih rendah dibanding model gratis OpenRouter untuk generative task. Biaya DeepSeek per-call juga jauh di bawah biaya yang di-charge ke user ($0.10 per siklus).
+**Rationale:**
+Gate 2 generates the text that will be reviewed and sent directly by the user. Output quality is critical here — poor drafts damage user trust. DeepSeek `deepseek-chat` (V4 Flash) offers more consistent quality and lower latency than OpenRouter free models for generative tasks. DeepSeek's cost-per-call is also far below the $0.10 fee charged to the user per successful draft.
 
-**Alternatif yang dipertimbangkan:**
-- *OpenRouter free models sebagai primary Gate 2* — kualitas output tidak konsisten, beberapa model gratis terlalu sering menghasilkan teks yang terasa generik atau off-tone. Tetap dipakai sebagai fallback.
-- *GPT-4 / Claude* — terlalu mahal untuk margin di model $0.10/siklus.
+**Alternatives Considered:**
+- *OpenRouter free models as primary for Gate 2* — inconsistent output quality; some free models frequently generate text that feels generic or off-tone. Kept as fallback.
+- *GPT-4 / Claude* — too expensive to maintain margins under the $0.10/cycle model.
 
-**Konsekuensi:**
-- `DEEPSEEK_API_KEY` menjadi env var wajib untuk Gate 2 berfungsi optimal.
-- Kalau DeepSeek API down, fallback ke OpenRouter free models — kualitas output bisa menurun sementara.
-- Gate 2 juga berfungsi sebagai emergency fallback untuk Gate 1 (kalau semua OpenRouter gagal, Gate 1 mencoba `deepseek-chat` satu kali).
+**Consequences:**
+- `DEEPSEEK_API_KEY` is a mandatory environment variable for Gate 2 to function optimally.
+- If the DeepSeek API goes down, it falls back to OpenRouter free models — output quality may degrade temporarily.
+- Gate 2 also acts as an emergency fallback for Gate 1 (if all OpenRouter models fail, Gate 1 attempts `deepseek-chat` once).
 
 ---
 
-## ADR-003: Input Instagram menggunakan username kompetitor, bukan free-text keyword
+## ADR-003: Instagram Ingestion Uses competitor Username instead of Free-Text Keyword
 
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1 §4.1)
+**Date:** 2026-07 (documented from PRD v4.1 §4.1)
 **Status:** Accepted
-**File referensi:** `src/lib/scraper.ts:84-137`, `src/lib/types.ts:55`
+**Reference File:** `src/lib/scraper.ts:84-137`, `src/lib/types.ts:55`
 
-**Keputusan:**
-Untuk platform Instagram, user memasukkan **username kompetitor** (contoh: `tokopedia`) — bukan keyword/hashtag bebas. Sistem kemudian scrape postingan terbaru dari akun kompetitor tersebut.
+**Decision:**
+For the Instagram platform, users input the **competitor's username** (e.g., `tokopedia`) — not free-text keywords or hashtags. The system then scrapes the latest posts from that competitor's account.
 
-**Alasan:**
-Endpoint search Instagram yang ada di RapidAPI (`search_ig.php`) mengembalikan campuran hasil — akun, hashtag, lokasi, postingan — yang sulit diklasifikasikan secara andal. Strategi yang lebih predictable: ambil postingan terbaru dari akun resmi kompetitor, lalu analisis caption/komentar. Ini juga lebih natural bagi pengguna: "tambahkan kompetitor dengan username mereka."
+**Rationale:**
+The Instagram search endpoints available on RapidAPI (`search_ig.php`) return a mix of accounts, hashtags, locations, and posts, making it difficult to classify competitor complaints reliably. A more predictable strategy is to retrieve the competitor's official posts, then analyze captions and comments. This is also more intuitive for users: "add competitor by their username".
 
-**Alternatif yang dipertimbangkan:**
-- *Free-text keyword search di Instagram* — endpoint yang tersedia tidak reliable untuk use case ini. Hasil campuran sulit diparsing secara konsisten.
-- *Scrape komentar di postingan kompetitor* — ideal tapi secara teknis lebih kompleks dan API yang tersedia tidak mendukung ini dengan mudah.
+**Alternatives Considered:**
+- *Free-text keyword search on Instagram* — available endpoints are not reliable for this use case. Mixed results are difficult to parse consistently.
+- *Scrape comments on competitor posts* — ideal, but technically more complex, and standard APIs do not support this easily.
 
-**Konsekuensi:**
-- Input Instagram divalidasi sebagai username (strip `@` otomatis).
-- Endpoint yang digunakan: `POST instagram-scraper-stable-api.p.rapidapi.com/get_ig_user_posts.php` (lihat Gotcha §7.3 di ARCHITECTURE.md — ini POST, bukan GET).
-- Response shape tidak stabil — kode sudah handle 4 kemungkinan shape.
+**Consequences:**
+- Instagram inputs are validated as usernames (automatic `@` strip).
+- Endpoint used: `POST instagram-scraper-stable-api.p.rapidapi.com/get_ig_user_posts.php` (note: this is a POST, not a GET).
+- Response shape is unstable — the codebase already handles 4 possible shape wrappers.
 
 ---
 
-## ADR-004: Gate 1 failure → lead dihapus permanen dari database
+## ADR-004: Gate 1 Failure Leads to Permanent Deletion of Post from Database
 
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1 §4.2)
+**Date:** 2026-07 (documented from PRD v4.1 §4.2)
 **Status:** Accepted
-**File referensi:** `src/lib/pipeline/helpers.ts:151-153`
+**Reference File:** `src/lib/pipeline/helpers.ts:151-153`
 
-**Keputusan:**
-Kalau Gate 1 menolak sebuah lead (tidak relevan), baris tersebut langsung di-`DELETE` dari tabel `leads_queue` — bukan diubah statusnya menjadi `REJECTED`.
+**Decision:**
+If Gate 1 rejects a lead (irrelevant), the row is immediately deleted (`DELETE`) from the `leads_queue` table — rather than updating its status to `REJECTED`.
 
-**Alasan:**
-Lead yang ditolak Gate 1 adalah noise — postingan yang lolos fuzzy pre-filter tapi ternyata tidak relevan setelah diperiksa LLM. Menyimpannya hanya memenuhi database tanpa nilai. Penghapusan permanen menjaga kebersihan data dan efisiensi storage. Tidak ada kebutuhan audit trail untuk postingan yang ditolak (tidak ada billing event, tidak ada aksi user).
+**Rationale:**
+Leads rejected by Gate 1 are noise — posts that passed the fuzzy pre-filter but were deemed irrelevant by the LLM. Storing them fills up the database without adding value. Permanent deletion keeps data clean and storage efficient. There is no audit trail requirement for rejected posts since no billing event occurred and no user action was taken.
 
-**Alternatif yang dipertimbangkan:**
-- *Simpan dengan status `REJECTED` untuk analytics* — dipertimbangkan, tapi tidak ada use case konkret untuk data ini di MVP. Bisa dipertimbangkan ulang saat fitur "trend analytics" dibangun (lihat UPGRADE.md §4 tentang CockroachDB).
-- *Soft delete* — tidak perlu. Tidak ada kebutuhan recovery data ini.
+**Alternatives Considered:**
+- *Save with status `REJECTED` for analytics* — considered, but no concrete use case exists in the MVP. Can be revisited when "trend analytics" are built (see `ROADMAP.md` §2 regarding CockroachDB).
+- *Soft delete* — unnecessary. There is no recovery requirement for this data.
 
-**Konsekuensi:**
-- Tidak ada cara untuk mereview lead yang sudah di-reject Gate 1. Ini by design.
-- Beda dengan Gate 2 failure: kalau Gate 2 gagal (semua model habis), lead dikembalikan ke status `PENDING` agar user bisa retry. Hanya Gate 1 rejection yang permanent delete.
+**Consequences:**
+- There is no way to review leads rejected by Gate 1. This is by design.
+- Different from Gate 2 failures: if Gate 2 fails (all fallback models fail), the lead is returned to `PENDING` status to allow user retries. Only Gate 1 rejection results in permanent deletion.
 
 ---
 
-## ADR-005: Model bisnis prepaid credit wallet, bukan charge langsung per transaksi
+## ADR-005: Prepaid Credit Wallet Model instead of Charging per Transaction
 
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1 §2.2)
+**Date:** 2026-07 (documented from PRD v4.1 §2.2)
 **Status:** Accepted
-**File referensi:** `src/lib/types.ts:90-102`, `PRDERD.md §2.2`
+**Reference File:** `src/lib/types.ts:90-102`, `docs/INTERNAL_PRD.md §2.2`
 
-**Keputusan:**
-User top-up saldo kredit terlebih dahulu, lalu dipotong $0.10 per siklus sukses. Tidak ada pembayaran per-transaksi langsung.
+**Decision:**
+Users top-up credit balance in advance, and the system deducts $0.10 per successful draft generation. There is no direct pay-as-you-go billing per transaction.
 
-**Alasan:**
-Tidak ada payment gateway yang efisien untuk transaksi $0.10 (~Rp1.600). Biaya admin fee gateway jauh melebihi nilai transaksinya. Model dompet kredit prabayar menggabungkan banyak micro-transaction menjadi satu top-up yang lebih besar — ekonomis untuk semua pihak.
+**Rationale:**
+No payment gateway is efficient enough to process $0.10 microtransactions. The administrative fees exceed the transaction value. The prepaid wallet model aggregates small microtransactions into a single larger top-up — making it economical for both parties.
 
-**Alternatif yang dipertimbangkan:**
-- *Subscription bulanan* — tidak cocok untuk early adopters yang mau "coba dulu". Barrier masuk lebih tinggi.
-- *Charge per-transaksi langsung* — secara teknis tidak ekonomis (fee gateway > nilai transaksi).
-- *Freemium dengan batas fitur* — tetap ada sebagai free demo mingguan, tapi bukan model utama.
+**Alternatives Considered:**
+- *Monthly subscription* — high friction for early adopters who want a low-risk trial.
+- *Direct charge per transaction* — technically uneconomical (gateway fees > transaction value).
+- *Freemium with feature gating* — exists as a weekly free demo, but not the primary monetization model.
 
-**Konsekuensi:**
-- `credit_balance` di tabel `profiles` adalah sumber kebenaran saldo user.
-- Top-up minimal $2.00 (setara 20 siklus).
-- Free tier saat daftar: $2.00 kredit awal.
-- Tambahan: 5 free demo per minggu (terpisah dari `credit_balance`, reset otomatis via `consume_cycle_credit()`).
-
----
-
-## ADR-006: Stripe Checkout sebagai primary payment gateway (bukan Midtrans)
-
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1 §3, UPGRADE.md §0)
-**Status:** Accepted — akan diperluas dengan Midtrans (Fase 3)
-**File referensi:** `src/lib/stripe.ts`, `src/app/api/billing/topup/`, `src/app/api/billing/webhook/`
-
-**Keputusan:**
-Stripe Checkout dipakai sebagai gateway pembayaran utama, meskipun target market awal adalah Indonesia.
-
-**Alasan:**
-Stripe memungkinkan pemrosesan kartu kredit global, Apple Pay, dan Google Pay dalam USD — menyederhanakan kode dan mempercepat setup untuk hackathon. Untuk hackathon judging, Stripe jauh lebih mudah untuk demo daripada Midtrans yang membutuhkan proses approval merchant lebih panjang.
-
-**Alternatif yang dipertimbangkan:**
-- *Midtrans dari awal* — lebih cocok untuk market Indonesia (GoPay, QRIS, transfer bank), tapi approval merchant membutuhkan waktu. Direncanakan sebagai penambahan di Fase 3 (bukan penggantian Stripe).
-- *Xendit* — juga dipertimbangkan, sudah ada di `CHECK` constraint tabel `payment_transactions`, tapi belum diimplementasi.
-
-**Konsekuensi:**
-- Skema `payment_transactions.gateway` sudah didesain multi-gateway (`CHECK (gateway IN ('stripe', 'midtrans', 'xendit'))`). Menambah Midtrans nanti hanya butuh menambah route baru, tidak perlu migrasi skema.
-- Webhook Stripe diverifikasi via `STRIPE_WEBHOOK_SECRET` + dilindungi idempotency guard di tabel `webhook_events`.
-- Untuk pembeli Indonesia, saat ini hanya kartu kredit/debit yang tersedia via Stripe — GoPay/QRIS akan tersedia setelah Midtrans diintegrasikan.
+**Consequences:**
+- `credit_balance` in the `profiles` table is the source of truth for user balances.
+- Minimum top-up amount is $2.00 (equivalent to 20 cycles).
+- New users receive a $2.00 trial balance upon registration.
+- Added: 5 free weekly demo credits (tracked separately from `credit_balance` and automatically reset via `consume_cycle_credit()`).
 
 ---
 
-## ADR-007: CockroachDB sebagai layer tambahan, bukan migrasi total dari Supabase
+## ADR-006: Stripe Checkout as Primary Payment Gateway (instead of Midtrans)
 
-**Tanggal:** 2026-07 (dokumentasi dari UPGRADE.md §4.2)
-**Status:** Planned — belum diimplementasi
-**File referensi:** `UPGRADE.md §4`
+**Date:** 2026-07 (documented from PRD v4.1 §3, ROADMAP.md §0)
+**Status:** Accepted — to be extended with Midtrans (Phase 3)
+**Reference File:** `src/lib/stripe.ts`, `src/app/api/billing/topup/`, `src/app/api/billing/webhook/`
 
-**Keputusan:**
-Ketika CockroachDB diintegrasikan (rencana Fase 1, deadline CockroachDB × AWS Hackathon 18 Agustus 2026), ia akan berfungsi sebagai **layer analitik tambahan** — bukan menggantikan Supabase.
+**Decision:**
+Stripe Checkout is used as the primary payment gateway, even though the initial target market is Indonesia.
 
-**Alasan:**
-Supabase adalah source of truth transaksional yang sudah stabil: billing, RLS, auth, leads_queue aktif. Memindahkan ini ke CockroachDB berisiko tinggi dan tidak memberikan nilai tambah nyata. Use case nyata CockroachDB untuk Undercut adalah menyimpan **embedding historis lead** untuk vector similarity search — fitur yang tidak ada di Supabase saat ini. Dua database untuk dua concern yang berbeda adalah arsitektur yang paling aman.
+**Rationale:**
+Stripe supports global credit card processing, Apple Pay, and Google Pay in USD — simplifying the billing codebase and speeding up setup. For hackathon judging, Stripe is significantly easier to configure and demo than Midtrans, which requires a longer merchant approval process.
 
-**Alternatif yang dipertimbangkan:**
-- *Migrasi total Supabase → CockroachDB* — terlalu berisiko, RLS dan billing sudah berjalan di Supabase. Tidak ada keuntungan nyata untuk data transaksional.
-- *pgvector di Supabase* — Supabase mendukung pgvector, tapi tidak ada distributed SQL + vector index yang dibutuhkan untuk use case trend analytics skala besar. CockroachDB juga merupakan requirement hackathon.
+**Alternatives Considered:**
+- *Midtrans from the start* — better suited for the Indonesian market (GoPay, QRIS, local bank transfers), but merchant approval takes time. Planned for integration in Phase 3 (not replacing Stripe).
+- *Xendit* — also considered, placeholder exists in `CHECK` constraint of `payment_transactions`, but not implemented.
 
-**Konsekuensi:**
-- Dua connection string berbeda di env: `DATABASE_URL` (Supabase) dan `COCKROACHDB_CONNECTION_STRING` (CockroachDB).
-- CockroachDB hanya menyimpan data analitik: embedding, topic tag, sentiment score per lead.
-- Foreign key lintas database tidak ada — hanya referensi ID (`profile_id`, `competitor_target_id`) sebagai plain UUID, bukan FK constraint.
-- Write ke CockroachDB dilakukan secara **async setelah Gate 1 selesai** — tidak menambah latency ke jalur kritis Gate 1→Gate 2.
-
----
-
-## ADR-008: Semi-automated (Human-in-the-Loop) — tidak ada bot auto-reply
-
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1 §4.3)
-**Status:** Accepted — keputusan produk permanen
-**File referensi:** `PRDERD.md §4.3`, `PRDERD.md §4.3 C.4`
-
-**Keputusan:**
-Undercut tidak pernah mem-posting balasan secara otomatis. Semua pengiriman balasan membutuhkan satu klik eksplisit dari user, menggunakan akun mereka sendiri (via X Intent URL atau clipboard + tab baru untuk Instagram).
-
-**Alasan:**
-Posting otomatis oleh bot adalah risiko utama shadowban dari platform sosial. Ini bukan trade-off — ini line merah yang tidak boleh dilewati. Platform seperti X dan Instagram secara aktif mendeteksi dan membatasi akun yang menggunakan otomasi untuk memposting. Selain itu, dari perspektif regulasi, pesan yang dikirim dari akun user harus melalui persetujuan eksplisit user.
-
-**Alternatif yang dipertimbangkan:**
-- *Auto-reply background* — ditolak. Risiko shadowban terlalu tinggi dan mengurangi nilai produk (user kehilangan kontrol atas apa yang diposting atas nama mereka).
-- *Approval workflow dengan auto-post setelah approve* — masih berisiko karena posting dilakukan oleh sistem, bukan user secara langsung via browser.
-
-**Konsekuensi:**
-- Tombol "Reply on X": buka `https://twitter.com/intent/tweet?in_reply_to={id}&text={encoded_reply}` di tab baru.
-- Tombol "Reply on IG": salin teks balasan ke clipboard + buka URL postingan IG di tab baru.
-- Setelah klik, status lead diubah ke `REPLIED` (optimistic UI — tidak menunggu response server).
+**Consequences:**
+- The `payment_transactions.gateway` schema is already designed for multiple gateways (`CHECK (gateway IN ('stripe', 'midtrans', 'xendit'))`). Adding Midtrans later will only require adding new routes, not database schema migrations.
+- Stripe webhooks are verified using `STRIPE_WEBHOOK_SECRET` and protected by the `webhook_events` idempotency guard.
+- Indonesian buyers currently must pay via credit/debit card on Stripe — GoPay/QRIS will be available after Midtrans is integrated.
 
 ---
 
-## ADR-009: Fuzzy pre-filter (Gate 0) dijalankan sebelum insert ke database
+## ADR-007: CockroachDB as an Analytics Layer, Not a Total Migration from Supabase
 
-**Tanggal:** 2026-07 (dari pattern aktual di kode)
+**Date:** 2026-07 (documented from ROADMAP.md §2)
+**Status:** Planned — not yet implemented
+**Reference File:** `ROADMAP.md §2`
+
+**Decision:**
+When CockroachDB is integrated (planned for Phase 2), it will act as an **additional analytics layer** — not replacing Supabase.
+
+**Rationale:**
+Supabase is a mature transactional source of truth (Auth, Billing, Active Queue RLS). Migrating all data to CockroachDB carries high operational risk without clear transactional benefits. The primary use case for CockroachDB in Undercut is storing **historical lead text embeddings** for vector similarity searches and trend analysis. Keeping transactional data and analytical data separated is the safest architectural approach.
+
+**Alternatives Considered:**
+- *Total migration from Supabase to CockroachDB* — high risk, RLS and billing are already working smoothly in Supabase.
+- *pgvector in Supabase* — Supabase supports pgvector, but lacks the distributed SQL scalability and analytics indexing required for high-volume historical trends. CockroachDB is also a core requirement for its respective hackathon.
+
+**Consequences:**
+- Two distinct database connection strings will exist in the environment: `DATABASE_URL` (Supabase) and `COCKROACHDB_CONNECTION_STRING` (CockroachDB).
+- CockroachDB only stores analytical data: text embeddings, topic tags, and sentiment scores.
+- No foreign keys will cross the database boundaries — profile IDs and competitor target IDs will be stored as plain UUIDs instead of foreign key constraints.
+- Writes to CockroachDB will run **asynchronously after Gate 1 finishes** — preventing write latency on the critical Gate 1 → Gate 2 user path.
+
+---
+
+## ADR-008: Semi-Automated (Human-in-the-Loop) — No Auto-Reply Bots
+
+**Date:** 2026-07 (documented from PRD v4.1 §4.3)
+**Status:** Accepted — permanent product decision
+**Reference File:** `docs/INTERNAL_PRD.md` §4.3, §4.3 C.4
+
+**Decision:**
+Undercut never publishes replies automatically. All reply actions require an explicit click by the user, sending the pitch from their own account (via X Intent URL or clipboard helper + new tab for Instagram).
+
+**Rationale:**
+Automated posting by background bots is the primary cause of social account suspensions and shadowbans. Platform algorithms actively detect and restrict automated posting behaviors. From a compliance and trust perspective, pitches published on behalf of users must pass through explicit human review first.
+
+**Alternatives Considered:**
+- *Background auto-replying* — rejected. Shadowban risk is too high, and users lose control over what is posted in their name.
+- *Approval workflow with automated background posting* — still risky since posting originates from a server rather than the user's browser context.
+
+**Consequences:**
+- "Reply on X" button: opens `https://twitter.com/intent/tweet?in_reply_to={id}&text={encoded_reply}` in a new tab.
+- "Reply on IG" button: copies the draft to clipboard and opens the target IG post in a new tab.
+- Clicking reply updates the lead status to `REPLIED` optimistically without waiting for server verification.
+
+---
+
+## ADR-009: Fuzzy Pre-Filter (Gate 0) Runs Before Database Insertion
+
+**Date:** 2026-07 (from active code patterns)
 **Status:** Accepted
-**File referensi:** `src/lib/fud-keywords.ts`, `src/lib/pipeline/helpers.ts:54-62`
+**Reference File:** `src/lib/fud-keywords.ts`, `src/lib/pipeline/helpers.ts:54-62`
 
-**Keputusan:**
-Sebelum postingan dimasukkan ke `leads_queue`, mereka melewati fuzzy keyword pre-filter (`fuzzyPreFilter()`) berbasis dictionary. Postingan dengan score < 0.20 dibuang tanpa pernah masuk database.
+**Decision:**
+Before posts are saved to the `leads_queue` database table, they must pass through a local, dictionary-based fuzzy pre-filter (`fuzzyPreFilter()`). Posts with scores < 0.20 are immediately discarded.
 
-**Alasan:**
-Gate 1 LLM lebih akurat tapi lebih mahal secara latency (15 detik per model, bisa retry hingga 8 model). Fuzzy pre-filter berjalan dalam microsecond dan tanpa biaya API. Membuang noise yang jelas (postingan terlalu pendek, sentimen positif murni, spam) di sini menghemat banyak waktu dan potensial LLM call.
+**Rationale:**
+Gate 1 LLM classification is highly accurate but introduces latency (15s per model, multiple fallback attempts). The fuzzy pre-filter runs locally in microseconds at zero cost. Discarding obvious noise (short ads, pure positive reviews, generic spam) at the edge saves substantial API call budgets and latency.
 
-**Alternatif yang dipertimbangkan:**
-- *Langsung Gate 1 tanpa pre-filter* — terlalu boros. Gate 1 sudah punya cost latency yang signifikan.
-- *Pre-filter lebih agresif (threshold lebih tinggi)* — terlalu banyak true positive yang terbuang. Threshold 0.20 dipilih karena sangat permisif — tujuannya hanya membuang noise yang benar-benar jelas.
+**Alternatives Considered:**
+- *Run Gate 1 directly on all scraped posts* — highly inefficient. Gate 1 introduces high latency.
+- *Aggressive pre-filtering (higher threshold)* — risks discarding true positives. The 0.20 threshold is intentionally permissive to catch most potential leads while filtering out obvious junk.
 
-**Konsekuensi:**
-- Dictionary `FUD_KEYWORDS` di `fud-keywords.ts` harus di-update kalau ada kategori keluhan baru yang relevan.
-- Dictionary sudah mencakup keywords Bahasa Indonesia (`indonesian_fud` category) — ini penting untuk target market SEA.
-- Kalau ada keluhan yang seharusnya masuk tapi tidak, kemungkinan tertahan di fuzzy filter, bukan Gate 1.
-
----
-
-## ADR-010: Gate 1 dijalankan on-demand saat user klik "Generate Draft", bukan saat scraping
-
-**Tanggal:** 2026-07 (dari pattern aktual di kode, `helpers.ts:22-24`)
-**Status:** Accepted
-**File referensi:** `src/lib/pipeline/helpers.ts:22-24`, `src/lib/pipeline/helpers.ts:139-171`
-
-**Keputusan:**
-Gate 1 (LLM classifier) tidak dijalankan saat postingan di-scrape. Postingan masuk ke `leads_queue` dengan status `PENDING` dan `gate_1_passed=false`. Gate 1 baru dijalankan saat user secara eksplisit menekan tombol "Generate Draft" di dashboard.
-
-**Alasan:**
-Menjalankan Gate 1 saat scraping berarti setiap cron poll akan langsung menghabiskan rate limit OpenRouter (20 rpm/200 rpd) untuk semua target aktif semua user — bisa habis dalam hitungan menit kalau ada banyak user. Dengan on-demand trigger, Gate 1 hanya berjalan kalau ada user yang aktif menggunakan dashboard. Ini juga memberikan user kontrol penuh — mereka bisa melihat postingan raw dulu sebelum memutuskan apakah mau memproses (dan potensial charge) lead tersebut.
-
-**Alternatif yang dipertimbangkan:**
-- *Gate 1 berjalan langsung saat scrape* — terlalu boros rate limit OpenRouter, terutama kalau scraping dijadwalkan setiap 10-15 menit untuk banyak user sekaligus.
-- *Gate 1 berjalan di background queue* — bisa, tapi belum ada queue infrastructure (BullMQ/QStash) yang diimplementasi. Roadmap Fase 4 di UPGRADE.md.
-
-**Konsekuensi:**
-- Dashboard menampilkan postingan yang belum difilter Gate 1 (status `PENDING`, `gate_1_passed=false`).
-- User melihat raw content sebelum klik Generate Draft — ini sebenarnya bisa jadi fitur: user bisa review apakah postingan layak diproses.
-- Kalau user tidak pernah klik "Generate Draft", postingan tetap tersimpan sebagai `PENDING` selamanya.
+**Consequences:**
+- The `FUD_KEYWORDS` dictionary in `fud-keywords.ts` must be updated if new categories of complaints need to be monitored.
+- The dictionary includes Indonesian FUD keywords (`indonesian_fud` category) to support Southeast Asian targets.
+- If a relevant complaint is missed, check if it was discarded by the fuzzy filter before blaming Gate 1.
 
 ---
 
-## ADR-011: Autentikasi hanya Google OAuth, tidak ada email/password
+## ADR-010: Gate 1 Runs On-Demand when User Clicks "Generate Draft"
 
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1 §4.4)
+**Date:** 2026-07 (from active code patterns)
 **Status:** Accepted
-**File referensi:** `src/app/login/`, `PRDERD.md §4.4`
+**Reference File:** `src/lib/pipeline/helpers.ts:22-24`, `src/lib/pipeline/helpers.ts:139-171`
 
-**Keputusan:**
-Sistem auth hanya mendukung Google OAuth via Supabase Auth. Tidak ada opsi email/password, OTP, atau provider OAuth lain.
+**Decision:**
+Gate 1 LLM classification does not run during scraping. Scraped posts enter `leads_queue` as `PENDING` with `gate_1_passed=false`. Gate 1 is executed on-demand when the user clicks the "Generate Draft" button on the dashboard.
 
-**Alasan:**
-Satu provider OAuth mengurangi kompleksitas kode auth secara signifikan (tidak perlu handle password reset, email verification, multiple token strategies). Google OAuth mencakup mayoritas target user (developer, indie hacker, tim pemasaran digital) yang hampir pasti sudah punya akun Google. Supabase Auth menangani semua kompleksitas OAuth di background.
+**Rationale:**
+Running Gate 1 during scraping would immediately exhaust OpenRouter free model rate limits (20 rpm / 200 rpd) across multiple active targets and users. By running Gate 1 on-demand, LLM calls are only made when a user is actively engaging with the dashboard. This also gives users visibility over raw scraped posts, letting them choose which leads to process.
 
-**Alternatif yang dipertimbangkan:**
-- *Email + password* — lebih universal tapi butuh implementasi password reset, email verification, dan manajemen session yang lebih kompleks.
-- *Multiple OAuth providers (GitHub, Twitter)* — bisa berguna untuk developer audience, tapi memperumit codebase. Bisa ditambahkan nanti kalau ada permintaan.
+**Alternatives Considered:**
+- *Run Gate 1 during background scraping* — exhausts free tier OpenRouter limits quickly.
+- *Background queue execution* — viable but requires a dedicated queue infrastructure (e.g., BullMQ or QStash), which is not yet implemented (see `ROADMAP.md` Phase 4).
 
-**Konsekuensi:**
-- Row `profiles` dibuat otomatis via Postgres trigger `on_auth_user_created` saat user pertama kali sign-in.
-- **Catatan saat ini:** Google OAuth sedang di-hidden untuk keperluan judging hackathon. Mekanisme auth sementara mungkin berbeda — tanya ke owner sebelum mengubah kode auth.
+**Consequences:**
+- The dashboard renders unfiltered raw posts (status `PENDING`, `gate_1_passed=false`).
+- Users can review raw content before committing to draft generation.
+- Unprocessed posts remain in the queue as `PENDING` indefinitely.
 
 ---
 
-## ADR-012: `consume_cycle_credit()` menggunakan SELECT FOR UPDATE (atomic RPC)
+## ADR-011: Authentication via Google OAuth Only
 
-**Tanggal:** 2026-07 (dari SQL schema di PRD v4.1 §8)
+**Date:** 2026-07 (documented from PRD v4.1 §4.4)
 **Status:** Accepted
-**File referensi:** `src/lib/pipeline/helpers.ts:174-195`, `PRDERD.md §8 (fungsi consume_cycle_credit)`
+**Reference File:** `src/app/login/`, `docs/INTERNAL_PRD.md §4.4`
 
-**Keputusan:**
-Operasi pengecekan dan pengurangan saldo kredit diimplementasi sebagai Postgres RPC (`consume_cycle_credit()`) yang menggunakan `SELECT ... FOR UPDATE` untuk mengunci row selama transaksi.
+**Decision:**
+Authentication is restricted to Google OAuth via Supabase Auth. Email/password, OTP, and other OAuth providers are not supported.
 
-**Alasan:**
-Race condition adalah risiko nyata: kalau user membuka dua tab dan klik "Generate Draft" bersamaan pada dua lead berbeda, kedua request bisa membaca `credit_balance = $0.10` secara bersamaan dan keduanya lanjut ke Gate 2 — padahal saldo seharusnya sudah habis setelah yang pertama. `SELECT FOR UPDATE` memastikan hanya satu transaksi yang bisa mengakses dan mengubah row `profiles` pada satu waktu.
+**Rationale:**
+Restricting auth to a single OAuth provider reduces codebase complexity (no need for password reset flows, email verification, or session mapping). Google OAuth covers the vast majority of our target audience (developers, indie hackers, SaaS growth marketers). Supabase Auth manages OAuth sessions securely out-of-the-box.
 
-**Alternatif yang dipertimbangkan:**
-- *Optimistic locking (check-then-update)* — tidak safe untuk kasus concurrent ini. Dua query bisa menyelesaikan SELECT di waktu yang sama sebelum salah satunya UPDATE.
-- *Application-level mutex* — tidak bisa diandalkan di environment serverless (setiap request bisa berjalan di instance berbeda).
+**Alternatives Considered:**
+- *Email + Password* — universal but requires password management, reset flows, and email verification overhead.
+- *Multiple OAuth providers (GitHub, Twitter)* — useful for developer audiences, but adds integration overhead. Can be added later.
 
-**Konsekuensi:**
-- Jangan pernah mengubah logika billing (`credit_balance` update) dari application layer secara langsung. Selalu gunakan RPC `consume_cycle_credit()`.
-- RPC ini mengembalikan string: `'FREE_DEMO'`, `'CHARGED'`, atau `'INSUFFICIENT_BALANCE'`.
-- Reset free demo juga terjadi di dalam RPC ini (bukan cron terpisah).
+**Consequences:**
+- User profiles are created automatically via the PostgreSQL trigger `on_auth_user_created` when signing in for the first time.
+- **Active state check:** Google OAuth is hidden for the hackathon judging demo. Temporary login flows are in place. Consult owner before modifying authentication files.
 
 ---
 
-## ADR-013: Free demo mingguan dipakai duluan sebelum credit_balance
+## ADR-012: `consume_cycle_credit()` Implemented as a SELECT FOR UPDATE RPC
 
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1 §2, dari logika `consume_cycle_credit()`)
+**Date:** 2026-07 (from SQL schema in PRD v4.1 §8)
 **Status:** Accepted
-**File referensi:** `PRDERD.md §8 (consume_cycle_credit)`, `src/lib/pipeline/helpers.ts:184`
+**Reference File:** `src/lib/pipeline/helpers.ts:174-195`, `docs/INTERNAL_PRD.md §8 (consume_cycle_credit)`
 
-**Keputusan:**
-Di dalam `consume_cycle_credit()`, free demo kredit (`free_demo_credits_remaining`) selalu dikonsumsi terlebih dahulu, sebelum `credit_balance` dipotong.
+**Decision:**
+Checking and debiting user credits is handled inside a PostgreSQL Database Function (RPC) `consume_cycle_credit()` using `SELECT ... FOR UPDATE` to lock the profile row during the transaction.
 
-**Alasan:**
-Ini adalah retention hook produk yang disengaja: user selalu mendapatkan nilai gratis di awal tiap minggu, terlepas dari apakah mereka punya saldo berbayar atau tidak. Ini memastikan user yang sudah kehabisan saldo ($0) masih bisa menggunakan produk 5x per minggu — cukup untuk merasakan nilai produk dan termotivasi untuk top-up. Kalau dibalik (saldo dulu, demo setelah habis), user tanpa saldo tidak bisa menikmati free demo sama sekali.
+**Rationale:**
+Prevents race conditions. If a user opens the dashboard in two separate tabs and clicks "Generate Draft" simultaneously, both client requests could read a positive credit balance and proceed to Gate 2 before either updates the balance. Row-level locking ensures transactions are processed sequentially.
 
-**Alternatif yang dipertimbangkan:**
-- *Credit_balance dulu, demo sebagai backup* — mengurangi efek retention hook. User yang top-up $2 tidak merasakan manfaat free demo karena langsung dikonsumsi dari saldo.
-- *Free demo dan credit_balance dipakai proporsional* — terlalu kompleks tanpa manfaat nyata.
+**Alternatives Considered:**
+- *Client-side check-and-update* — unsafe. Database rows can be read concurrently.
+- *Application-level mutex* — unreliable in stateless serverless environments.
 
-**Konsekuensi:**
-- User dengan $10 saldo tetap akan memakai free demo duluan di awal minggu — 5 siklus pertama tiap minggu gratis.
-- Ini harus dikomunikasikan dengan jelas di UI (sudah ada di widget saldo dashboard).
-- Billing ledger mencatat tipe `FREE_DEMO` (amount_usd=0) untuk siklus gratis, bukan `GATE_2_GENERATION_FEE`.
+**Consequences:**
+- Never modify user `credit_balance` directly from client-side code. Always trigger the database function.
+- The database function returns `'FREE_DEMO'`, `'CHARGED'`, or `'INSUFFICIENT_BALANCE'`.
+- Weekly free credit reset logic is managed directly inside this database function.
 
 ---
 
-## ADR-014: Landing page menggantikan halaman /docs (single source of truth)
+## ADR-013: Weekly Free Demo Credits Used Before Paid credit_balance
 
-**Tanggal:** 2026-07 (dokumentasi dari PRD v4.1 §1, v3.0→v4.0 changelog)
+**Date:** 2026-07 (documented from PRD v4.1 §2)
 **Status:** Accepted
-**File referensi:** `src/app/page.tsx`, `PRDERD.md §1 (diff v3.0→v4.0)`
+**Reference File:** `docs/INTERNAL_PRD.md §8 (consume_cycle_credit)`, `src/lib/pipeline/helpers.ts:184`
 
-**Keputusan:**
-Halaman dokumentasi terpisah (`/docs`) dihapus. Semua penjelasan produk — cara kerja, fitur lengkap, FAQ mendalam — sekarang ada di landing page (`/`) dalam satu scroll.
+**Decision:**
+Inside the `consume_cycle_credit()` function, weekly free demo credits (`free_demo_credits_remaining`) are consumed first, before deducting paid `credit_balance`.
 
-**Alasan:**
-Halaman docs terpisah (menggunakan Fumadocs) menambah kompleksitas maintenance — dua tempat yang harus di-update kalau ada perubahan produk. Untuk produk yang masih berkembang cepat, single source of truth lebih pragmatis. Landing page yang komprehensif juga lebih efektif untuk konversi: pengunjung tidak perlu pindah halaman untuk mendapatkan semua informasi.
+**Rationale:**
+Acts as an intentional user retention hook. Users get free value at the start of each week, regardless of their paid credit state. This ensures users with $0.00 balances can still generate 5 drafts per week — keeping them engaged and giving them ongoing reasons to top-up.
 
-**Alternatif yang dipertimbangkan:**
-- *Tetap pakai Fumadocs* — dibuang karena maintenance overhead dan tidak sesuai dengan strategi single-page landing yang diadopsi dari referensi TweetHunter.io dan ReplyGuy.com.
-- *Docs sebagai subhalaman ringan* — tidak perlu. FAQ accordion di landing page sudah cukup untuk menjawab pertanyaan teknis yang biasanya masuk ke docs.
+**Alternatives Considered:**
+- *Consume paid credits first* — weakens the retention hook. Users who top up $2 would not benefit from free weekly credits until their paid balance is exhausted.
+- *Proportional consumption* — overly complex without clear benefits.
 
-**Konsekuensi:**
-- Link "Docs" di navbar dan footer sudah dihapus.
-- Kalau ada pertanyaan teknis yang belum dijawab di landing page, jawabnya adalah menambahkan FAQ item baru — bukan membuat halaman docs baru.
-- Semua SEO effort difokuskan ke satu URL (`/`), bukan tersebar ke `/docs/*`.
+**Consequences:**
+- Users with paid credit balances still use free weekly credits first.
+- This must be clearly visible in the UI (implemented in the dashboard credit widget).
+- Billing ledgers record transaction type `FREE_DEMO` with $0.00 amount.
+
+---
+
+## ADR-014: Landing Page Replaces Dedicated Documentation Section (/docs)
+
+**Date:** 2026-07 (documented from PRD v4.1 §1)
+**Status:** Accepted
+**Reference File:** `src/app/page.tsx`, `docs/INTERNAL_PRD.md §1`
+
+**Decision:**
+The dedicated documentation subroutes (`/docs`) have been removed. All product explanations, setup instructions, and FAQs are combined into the root landing page (`/`).
+
+**Rationale:**
+Maintaining separate docs (previously built using Fumadocs) introduces content maintenance overhead. For early-stage startups, keeping all details on a single page ensures visitors can learn everything without navigating away — maximizing conversion rates.
+
+**Alternatives Considered:**
+- *Maintain Fumadocs* — discarded to reduce maintenance footprint.
+- *Lightweight documentation subpages* — unnecessary. The FAQ accordion and feature checklist on the landing page cover all common technical queries.
+
+**Consequences:**
+- Documentation links have been removed from the navigation header and footer.
+- Technical updates are added directly to the landing page FAQ.
+- SEO efforts are concentrated entirely on the root URL (`/`).

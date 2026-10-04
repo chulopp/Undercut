@@ -8,6 +8,7 @@ import { MobileTabBar } from "@/components/dashboard/MobileTabBar";
 import { CreditWidget } from "@/components/dashboard/CreditWidget";
 import { TopUpModal } from "@/components/dashboard/TopUpModal";
 import { LowBalanceBanner } from "@/components/dashboard/LowBalanceBanner";
+import { OnboardingProvider } from "@/components/dashboard/OnboardingContext";
 import { useEffect } from "react";
 import { listLeads, getBillingStatus } from "@/lib/data";
 import { useToast } from "@/components/ui/Toast";
@@ -72,39 +73,41 @@ export default function DashboardLayoutShell({
   }, [pathname]);
 
   return (
-    <div className="flex min-h-screen bg-bg">
-      <Sidebar xPending={xPending} igPending={igPending} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-bg/80 px-4 backdrop-blur-lg sm:px-6">
-          <button
-            className="rounded-lg p-2 text-text md:hidden"
-            aria-label="Menu"
-            onClick={() => router.push("/dashboard")}
-          >
-            <Menu size={20} />
-          </button>
-          <div className="flex items-center gap-2 md:hidden">
-            <span className="text-sm font-bold text-text">Undercut</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CreditWidget onTopUp={() => setTopUpOpen(true)} />
-          </div>
-        </header>
+    <OnboardingProvider>
+      <div className="flex min-h-screen bg-bg">
+        <Sidebar xPending={xPending} igPending={igPending} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-bg/80 px-4 backdrop-blur-lg sm:px-6">
+            <button
+              className="rounded-lg p-2 text-text md:hidden"
+              aria-label="Menu"
+              onClick={() => router.push("/dashboard")}
+            >
+              <Menu size={20} />
+            </button>
+            <div className="flex items-center gap-2 md:hidden">
+              <span className="text-sm font-bold text-text">Undercut</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CreditWidget onTopUp={() => setTopUpOpen(true)} />
+            </div>
+          </header>
 
-        <MobileTabBar xPending={xPending} igPending={igPending} />
+          <MobileTabBar xPending={xPending} igPending={igPending} />
 
-        <main className="flex-1 px-4 pb-24 pt-4 sm:px-6 md:pb-8 md:pt-8">
-          <div className="mx-auto max-w-5xl">
-            <LowBalanceBanner
-              visible={lowBalance}
-              onTopUp={() => setTopUpOpen(true)}
-            />
-            {children}
-          </div>
-        </main>
+          <main className="flex-1 px-4 pb-24 pt-4 sm:px-6 md:pb-8 md:pt-8">
+            <div className="mx-auto max-w-5xl">
+              <LowBalanceBanner
+                visible={lowBalance}
+                onTopUp={() => setTopUpOpen(true)}
+              />
+              {children}
+            </div>
+          </main>
+        </div>
+
+        <TopUpModal open={topUpOpen} onClose={() => setTopUpOpen(false)} />
       </div>
-
-      <TopUpModal open={topUpOpen} onClose={() => setTopUpOpen(false)} />
-    </div>
+    </OnboardingProvider>
   );
 }

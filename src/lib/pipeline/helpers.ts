@@ -52,7 +52,11 @@ export async function processScrapeTarget(
 
     // 2. Fuzzy keyword pre-filter (fast, no LLM cost)
     const fuzzyPassed = rawPosts.filter((post) => {
-      const match = fuzzyPreFilter(post.raw_content, target.competitor_name)
+      const match = fuzzyPreFilter(
+        post.raw_content,
+        target.competitor_name,
+        post.author_username
+      )
       return match.passes
     })
     result.fuzzy_filtered = rawPosts.length - fuzzyPassed.length

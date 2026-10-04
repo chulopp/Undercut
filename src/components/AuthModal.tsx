@@ -1,16 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect } from "react";
-import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Sparkles, AlertTriangle, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useAuthModal } from "@/components/AuthModalProvider";
 import { createClient } from "@/utils/supabase/client";
+import { activateDemoSession } from "@/lib/demo-storage";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 function GoogleIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className="shrink-0">
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -33,10 +35,14 @@ function GoogleIcon() {
 
 export function AuthModal() {
   const { isOpen, close } = useAuthModal();
-  const supabase = createClient();
+  const [showLiveWarning, setShowLiveWarning] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setShowLiveWarning(false);
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
     };
@@ -48,19 +54,25 @@ export function AuthModal() {
     };
   }, [isOpen, close]);
 
+  const handleEnterDemo = () => {
+    activateDemoSession();
+    close();
+    router.push("/dashboard/x");
+  };
+
   const handleGoogleSignIn = async () => {
+    // Show warning banner since live Supabase cloud is offline for portfolio mode
+    setShowLiveWarning(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const supabase = createClient();
+      await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/api/auth/callback`,
         },
       });
-      if (error) throw error;
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      console.error("Google sign in failed:", errMsg);
-      alert("Sign in failed: " + errMsg);
+    } catch {
+      // Ignored: warning message already guides user to Demo Mode
     }
   };
 
@@ -78,11 +90,11 @@ export function AuthModal() {
           aria-label="Sign in to Undercut"
         >
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
             onClick={close}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 6 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
@@ -91,40 +103,63 @@ export function AuthModal() {
             <button
               onClick={close}
               aria-label="Close"
-              className="absolute right-4 top-4 rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text"
+              className="absolute right-4 top-4 rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-text cursor-pointer"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
 
             <div className="mb-6 flex flex-col items-center text-center">
               <Logo withWordmark={false} size={48} />
-              <h2 className="mt-4 text-2xl font-bold text-text">
-                Sign in to Undercut
+              <h2 className="mt-4 text-2xl font-bold text-text tracking-tight">
+                Welcome to Undercut
               </h2>
-              <p className="mt-2 text-sm text-muted">
-                Get <span className="font-semibold text-text">5 free replies</span>{" "}
-                every week — no card needed.
+              <p className="mt-1.5 text-sm text-muted">
+                Explore social FUD interceptor with{" "}
+                <span className="font-semibold text-accent">5 free demo tokens</span>.
               </p>
             </div>
 
-            <button
-              onClick={handleGoogleSignIn}
-              className="flex w-full items-center justify-center gap-3 rounded-full bg-white px-5 py-3 text-base font-semibold text-gray-900 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <GoogleIcon />
-              Sign in with Google
-            </button>
+            {/* Live Mode Notice / Alert */}
+            {showLiveWarning && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-5 rounded-xl border border-warning/30 bg-warning/10 p-3.5 text-left text-xs text-warning"
+              >
+                <div className="flex items-center gap-2 font-semibold">
+                  <AlertTriangle size={15} className="shrink-0" />
+                  <span>Google OAuth Offline (Portfolio Mode)</span>
+                </div>
+                <p className="mt-1 text-[11px] leading-relaxed text-text/80">
+                  Layanan live cloud sedang dinonaktifkan untuk demonstrasi portofolio.
+                  Silakan gunakan tombol <strong>Masuk Mode Demo</strong> di bawah untuk menjelajah aplikasi secara instan.
+                </p>
+              </motion.div>
+            )}
 
-            <p className="mt-5 text-center text-xs text-muted">
-              By continuing, you agree to our{" "}
-              <Link href="/terms" onClick={close} className="underline hover:text-text">
-                Terms of Service
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy" onClick={close} className="underline hover:text-text">
-                Privacy Policy
-              </Link>
-              .
+            <div className="space-y-3">
+              {/* Primary 3D Tactile Button: Demo Access */}
+              <button
+                onClick={handleEnterDemo}
+                className="group relative flex w-full items-center justify-center gap-2 rounded-xl border border-t-white/30 border-b-[3.5px] border-b-blue-700/90 border-x-blue-600/30 bg-gradient-to-b from-accent-hover to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-accent/20 transition-all hover:brightness-105 active:translate-y-0.5 cursor-pointer"
+              >
+                <Sparkles size={16} className="text-white/90 transition-transform group-hover:rotate-12" />
+                <span>Masuk Mode Demo (Instant Access)</span>
+                <ArrowRight size={15} className="ml-1 opacity-70 transition-transform group-hover:translate-x-1" />
+              </button>
+
+              {/* Secondary Button: Sign in with Google */}
+              <button
+                onClick={handleGoogleSignIn}
+                className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-surface-2 px-5 py-2.5 text-xs font-medium text-muted transition-colors hover:border-border/80 hover:text-text cursor-pointer"
+              >
+                <GoogleIcon />
+                <span>Sign in with Google (Live Mode)</span>
+              </button>
+            </div>
+
+            <p className="mt-6 text-center text-[11px] text-muted/70">
+              Demo mode stores session in your browser. No card or real login required.
             </p>
           </motion.div>
         </motion.div>
