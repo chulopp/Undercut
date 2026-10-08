@@ -21,19 +21,19 @@ function isPublicRoute(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Step 1: Always refresh the session (required by @supabase/ssr)
-  const { supabaseResponse, user } = await updateSession(request)
-
-  // Step 2: If it's a public route, just return (no gating)
-  if (isPublicRoute(pathname)) {
-    return supabaseResponse
-  }
-
-  // Step 2.5: Portfolio / Demo mode bypass
+  // Step 0: Portfolio / Demo mode bypass (Zero latency, never waits for Supabase cloud)
   const isDemo = request.cookies.get('undercut_demo_mode')?.value === 'true'
   if (isDemo) {
-    return supabaseResponse
+    return NextResponse.next()
   }
+
+  // Step 1: If it's a public route, just return (no auth gating)
+  if (isPublicRoute(pathname)) {
+    return NextResponse.next()
+  }
+
+  // Step 2: Always refresh the session for live protected routes (required by @supabase/ssr)
+  const { supabaseResponse, user } = await updateSession(request)
 
   // Step 3: Not logged in → redirect to / (landing page)
   if (!user) {

@@ -2,11 +2,12 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sparkles, Loader2 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { useAuthModal } from "@/components/AuthModalProvider";
 import { createClient } from "@/utils/supabase/client";
+import { activateDemoSession } from "@/lib/demo-storage";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
@@ -26,6 +27,13 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [enteringDemo, setEnteringDemo] = useState(false);
+
+  const handleEnterDemo = () => {
+    setEnteringDemo(true);
+    activateDemoSession();
+    window.location.href = "/dashboard/x";
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
@@ -118,8 +126,24 @@ export function Navbar() {
               </Button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={open}>
-                  Log In
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEnterDemo}
+                  disabled={enteringDemo}
+                  className="border-accent/40 text-accent hover:border-accent hover:bg-accent/10"
+                >
+                  {enteringDemo ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin text-accent" />
+                      <span>Memuat...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} className="text-accent" />
+                      <span>Mode Demo</span>
+                    </>
+                  )}
                 </Button>
                 <Button variant="primary" size="sm" onClick={open}>
                   Start Free
@@ -197,10 +221,22 @@ export function Navbar() {
                       variant="ghost"
                       onClick={() => {
                         setMenuOpen(false);
-                        open();
+                        handleEnterDemo();
                       }}
+                      disabled={enteringDemo}
+                      className="border-accent/40 text-accent hover:border-accent hover:bg-accent/10 justify-center"
                     >
-                      Log In
+                      {enteringDemo ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin text-accent" />
+                          <span>Memuat Demo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={16} className="text-accent" />
+                          <span>Mode Demo</span>
+                        </>
+                      )}
                     </Button>
                     <Button
                       variant="primary"

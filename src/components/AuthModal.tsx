@@ -2,12 +2,11 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { X, Sparkles, AlertTriangle, ArrowRight } from "lucide-react";
+import { X, Sparkles, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useAuthModal } from "@/components/AuthModalProvider";
 import { createClient } from "@/utils/supabase/client";
 import { activateDemoSession } from "@/lib/demo-storage";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 function GoogleIcon() {
@@ -36,11 +35,12 @@ function GoogleIcon() {
 export function AuthModal() {
   const { isOpen, close } = useAuthModal();
   const [showLiveWarning, setShowLiveWarning] = useState(false);
-  const router = useRouter();
+  const [enteringDemo, setEnteringDemo] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setShowLiveWarning(false);
+      setEnteringDemo(false);
       return;
     }
     const onKey = (e: KeyboardEvent) => {
@@ -55,9 +55,11 @@ export function AuthModal() {
   }, [isOpen, close]);
 
   const handleEnterDemo = () => {
+    setEnteringDemo(true);
     activateDemoSession();
-    close();
-    router.push("/dashboard/x");
+    // Hard browser navigation ensures the undercut_demo_mode cookie
+    // is cleanly passed in HTTP headers and client router state is refreshed.
+    window.location.href = "/dashboard/x";
   };
 
   const handleGoogleSignIn = async () => {
@@ -141,11 +143,21 @@ export function AuthModal() {
               {/* Primary 3D Tactile Button: Demo Access */}
               <button
                 onClick={handleEnterDemo}
-                className="group relative flex w-full items-center justify-center gap-2 rounded-xl border border-t-white/30 border-b-[3.5px] border-b-blue-700/90 border-x-blue-600/30 bg-gradient-to-b from-accent-hover to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-accent/20 transition-all hover:brightness-105 active:translate-y-0.5 cursor-pointer"
+                disabled={enteringDemo}
+                className="group relative flex w-full items-center justify-center gap-2 rounded-xl border border-t-white/30 border-b-[3.5px] border-b-blue-700/90 border-x-blue-600/30 bg-gradient-to-b from-accent-hover to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-accent/20 transition-all hover:brightness-105 active:translate-y-0.5 cursor-pointer disabled:opacity-80 disabled:cursor-wait"
               >
-                <Sparkles size={16} className="text-white/90 transition-transform group-hover:rotate-12" />
-                <span>Masuk Mode Demo (Instant Access)</span>
-                <ArrowRight size={15} className="ml-1 opacity-70 transition-transform group-hover:translate-x-1" />
+                {enteringDemo ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin text-white" />
+                    <span>Memuat Mode Demo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} className="text-white/90 transition-transform group-hover:rotate-12" />
+                    <span>Masuk Mode Demo (Instant Access)</span>
+                    <ArrowRight size={15} className="ml-1 opacity-70 transition-transform group-hover:translate-x-1" />
+                  </>
+                )}
               </button>
 
               {/* Secondary Button: Sign in with Google */}

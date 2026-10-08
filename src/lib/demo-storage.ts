@@ -254,8 +254,9 @@ export function isDemoSession(): boolean {
 
 export function activateDemoSession(): void {
   if (typeof window === "undefined") return;
+  const isSecure = window.location.protocol === "https:" ? "; Secure" : "";
   // Set cookie for 7 days (accessible by Next.js proxy middleware)
-  document.cookie = `${DEMO_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+  document.cookie = `${DEMO_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${isSecure}`;
   localStorage.setItem(`${STORAGE_PREFIX}active`, "true");
 
   // Ensure initial data exists
@@ -277,7 +278,8 @@ export function resetDemoSession(): void {
 
 export function clearDemoSession(): void {
   if (typeof window === "undefined") return;
-  document.cookie = `${DEMO_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
+  const isSecure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${DEMO_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax${isSecure}`;
   localStorage.removeItem(`${STORAGE_PREFIX}active`);
   localStorage.removeItem(`${STORAGE_PREFIX}profile`);
   localStorage.removeItem(`${STORAGE_PREFIX}competitors`);
