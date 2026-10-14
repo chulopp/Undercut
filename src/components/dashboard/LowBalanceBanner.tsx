@@ -22,12 +22,12 @@ export function LowBalanceBanner({
       <div className="flex items-center gap-3">
         <AlertTriangle size={18} className="shrink-0 text-warning" />
         <p className="text-sm text-text">
-          Saldo token Anda hampir habis atau sudah habis. Silakan lakukan Top Up untuk melanjutkan.
+          Your token balance is running low or depleted. Please top up to continue generating replies.
         </p>
       </div>
       <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
         <Button size="sm" variant="primary" onClick={onTopUp} className="h-8 text-xs cursor-pointer">
-          Top Up Sekarang
+          Top Up Now
         </Button>
       </div>
     </motion.div>

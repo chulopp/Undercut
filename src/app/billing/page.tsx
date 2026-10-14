@@ -201,7 +201,7 @@ export default function BillingView() {
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <>
-                <CreditCard size={16} /> Pay ${customAmount.toFixed(2)} (Demo Offline)
+                <CreditCard size={16} /> Pay ${customAmount.toFixed(2)}
               </>
             )}
           </Button>

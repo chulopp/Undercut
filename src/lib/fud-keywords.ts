@@ -5,7 +5,7 @@
  */
 
 export const FUD_KEYWORDS: Record<string, string[]> = {
-  // === FRUSTASI & KELUHAN LANGSUNG ===
+  // === FRUSTRATION & DIRECT COMPLAINTS ===
   frustration: [
     'broken', 'crash', 'crashed', 'crashing', 'bug', 'buggy', 'glitch', 'glitchy', 'error',
     'not working', "doesn't work", 'doesnt work', 'stopped working', 'wont work',
@@ -14,7 +14,7 @@ export const FUD_KEYWORDS: Record<string, string[]> = {
     'ridiculous', 'unbelievable', 'disaster', 'nightmare', 'embarrassing',
     'shame', 'disgrace', 'failure', 'fail', 'epic fail', 'disaster',
   ],
-  // === MENCARI ALTERNATIF — SINYAL PALING KUAT ===
+  // === LOOKING FOR ALTERNATIVES — STRONGEST INTENT ===
   switching_intent: [
     'alternative', 'alternatives', 'looking for', 'searching for', 'any alternatives',
     'switching to', 'switching from', 'switch to', 'switch from',
@@ -26,7 +26,7 @@ export const FUD_KEYWORDS: Record<string, string[]> = {
     'fed up', 'had enough', 'last straw', 'done with', 'done using',
     'never again', 'goodbye', 'farewell',
   ],
-  // === MASALAH HARGA / NILAI ===
+  // === PRICING & VALUE ISSUES ===
   pricing_complaint: [
     'overpriced', 'too expensive', 'ripoff', 'rip off', 'rip-off', 'scam', 'fraud',
     'not worth', 'waste of money', 'money grab', 'highway robbery',
@@ -34,7 +34,7 @@ export const FUD_KEYWORDS: Record<string, string[]> = {
     'charging more', 'hidden fees', 'extra charges', 'charged wrong',
     'refund', 'cancel subscription', 'cancelling',
   ],
-  // === MASALAH SUPPORT / LAYANAN ===
+  // === SUPPORT & SERVICE ISSUES ===
   support_complaint: [
     'no response', 'no reply', 'customer support', 'customer service', 'cs',
     'support ticket', 'waiting days', 'waiting weeks', 'no answer',
@@ -42,7 +42,7 @@ export const FUD_KEYWORDS: Record<string, string[]> = {
     'unhelpful', 'useless support', 'terrible support', 'worst support',
     'cant get help', 'reaching out', 'no one helps',
   ],
-  // === MASALAH KUALITAS / PERFORMA ===
+  // === QUALITY & PERFORMANCE ISSUES ===
   quality_issues: [
     'slow', 'laggy', 'lag', 'freezing', 'frozen', 'loading', 'timeout', 'timed out',
     'downtime', 'outage', 'down again', 'keeps going down', 'service down',
@@ -51,19 +51,19 @@ export const FUD_KEYWORDS: Record<string, string[]> = {
     'missing feature', 'removed feature', 'update broke', 'regression',
     'performance', 'battery drain', 'memory leak',
   ],
-  // === BAHASA INDONESIA — Target market utama ===
+  // === MULTILINGUAL (INDONESIAN MARKET) COMPLAINTS ===
   indonesian_fud: [
-    // Frustrasi
+    // Frustration
     'lemot', 'error terus', 'gabisa', 'ga bisa', 'gak bisa', 'nggak bisa', 'tidak bisa',
     'rusak', 'parah banget', 'kecewa', 'mengecewakan', 'sampah', 'ancur',
     'zonk', 'bodo amat', 'males', 'ribet', 'susah banget',
-    // Performa
+    // Performance
     'lambat', 'loading terus', 'sering error', 'sering down', 'hang',
     'sering crash', 'tiba-tiba close', 'force close', 'not responding',
-    // Harga
+    // Pricing
     'mahal', 'kemahalan', 'kemahal', 'bayar terus', 'dicharge', 'kena charge',
     'gak worth', 'nggak worth', 'bukan scam', 'nipu', 'menipu',
-    // Mencari alternatif
+    // Switching intent
     'pindah ke', 'mending pindah', 'cari alternatif', 'ada yang lebih bagus',
     'rekomendasi', 'rekomen', 'rekomendasiin', 'ada yang tau', 'suggest',
     'kapok', 'kapok pake', 'mau uninstall', 'udah uninstall', 'hapus aja',

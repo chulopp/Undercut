@@ -90,7 +90,7 @@ export function LeadCard({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "unknown";
       if (msg === "PENDING_PAYMENT") {
-        toast.error("Kuota demo token habis (0/5). Silakan reset demo dari sidebar untuk mencoba lagi.");
+        toast.error("Weekly free demo quota depleted (0/5). Please top up your balance to continue.");
       } else if (msg === "REJECTED") {
         toast.error("This post didn't pass AI relevance check.");
         onDeleted(lead.id); // Remove card instantly from UI on AI rejection

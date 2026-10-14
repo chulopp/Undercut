@@ -92,7 +92,7 @@ export function DifferentiatorPanel() {
                           return next;
                         })
                       }
-                      placeholder={`Keunggulan pembeda ${i + 1} (contoh: 10x lebih cepat, gratis migrasi)`}
+                      placeholder={`Key differentiator ${i + 1} (e.g., 10x faster, free migration)`}
                     />
                   ))}
                   <div className="flex gap-2 pt-1">
@@ -133,13 +133,13 @@ export function DifferentiatorPanel() {
               ) : (
                 <div className="py-1">
                   <p className="text-sm text-muted leading-relaxed">
-                    Belum ada poin pembeda yang diatur. Tambahkan keunggulan unik produk Anda agar AI dapat menonjolkannya saat membalas keluhan kompetitor.
+                    No differentiators set yet. Add your product's unique value props so AI can highlight them when replying to competitor complaints.
                   </p>
                   <button
                     onClick={() => setEditing(true)}
                     className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/20 cursor-pointer"
                   >
-                    <Plus size={13} /> Tambah Differentiators
+                    <Plus size={13} /> Add Differentiators
                   </button>
                 </div>
               )}

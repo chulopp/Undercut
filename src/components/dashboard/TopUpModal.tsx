@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CreditCard, X, AlertTriangle } from "lucide-react";
+import { CreditCard, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { createTopUp } from "@/lib/data";
 
 const TEMPLATES = [
   { amount: 2, label: "$2", cycles: "20" },
@@ -28,12 +29,28 @@ export function TopUpModal({
   preselectAmount?: number;
 }) {
   const [amount, setAmount] = useState<number>(preselectAmount ?? 10);
+  const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
 
-  const handleConfirm = () => {
-    toast.warning(
-      "Fitur Top-Up saat ini dinonaktifkan (Mode Portofolio Demo). Gunakan free tokens yang telah disediakan."
-    );
+  const handleConfirm = async () => {
+    if (amount < 2) {
+      toast.error("Minimum top-up is $2");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await createTopUp(amount);
+      toast.success(
+        `Top up $${amount.toFixed(2)} initiated. Redirecting to Stripe…`
+      );
+      setTimeout(() => {
+        window.location.href = res.redirectUrl;
+      }, 1000);
+    } catch {
+      toast.error("Failed to start top-up");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -75,18 +92,6 @@ export function TopUpModal({
             <p className="mt-1 text-xs text-muted">
               Pay per reply draft. No subscription. Credits never expire.
             </p>
-
-            {/* Portfolio Mode Warning Banner */}
-            <div className="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-3.5 text-left text-xs text-warning">
-              <div className="flex items-center gap-2 font-semibold">
-                <AlertTriangle size={15} className="shrink-0 text-warning" />
-                <span>Mode Portofolio / Pemeliharaan</span>
-              </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-text/80">
-                Integrasi pembayaran Stripe dinonaktifkan untuk demonstrasi portofolio.
-                Anda tetap dapat menguji antarmuka pilihan nominal di bawah ini.
-              </p>
-            </div>
 
             <div className="mt-5">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">
@@ -139,10 +144,16 @@ export function TopUpModal({
             <div className="mt-5 flex items-center gap-2">
               <Button
                 onClick={handleConfirm}
-                disabled={amount < 2}
+                disabled={amount < 2 || submitting}
                 className="flex-1 cursor-pointer"
               >
-                <CreditCard size={16} /> Pay ${amount.toFixed(2)} (Demo Offline)
+                {submitting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <>
+                    <CreditCard size={16} /> Pay ${amount.toFixed(2)}
+                  </>
+                )}
               </Button>
             </div>
 
