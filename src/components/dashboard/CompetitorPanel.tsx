@@ -33,9 +33,15 @@ export function CompetitorPanel({ platform }: { platform: Platform }) {
 
   const load = async () => {
     setLoading(true);
-    const data = await listCompetitors(platform);
-    setList(data);
-    setLoading(false);
+    try {
+      const data = await listCompetitors(platform);
+      setList(data || []);
+    } catch (err) {
+      console.error("[CompetitorPanel] Failed to load competitors:", err);
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

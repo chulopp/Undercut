@@ -7,6 +7,7 @@ import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 import { db } from '@/lib/db'
 import { profiles } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
@@ -15,14 +16,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
 
   callbacks: {
-    async signIn({ user }) {
-      if (!user.id || !user.email) return false
-      // Auto-create profile row on first sign-in (replaces Supabase trigger handle_new_user)
+    async signIn({ user, account }) {
+      if (!user.email) return false
+      // Use Google account providerAccountId as deterministic ID, fallback to user.id
+      const idToUse = account?.providerAccountId || user.id || crypto.randomUUID()
       try {
-        await db
-          .insert(profiles)
-          .values({ id: user.id, email: user.email })
-          .onConflictDoNothing()
+        const existing = await db.query.profiles.findFirst({
+          where: eq(profiles.email, user.email),
+        })
+        if (!existing) {
+          await db.insert(profiles).values({
+            id: idToUse,
+            email: user.email,
+          })
+        }
       } catch (err) {
         console.error('[auth] signIn profile upsert error:', err)
         return false
@@ -30,10 +37,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true
     },
 
-    async jwt({ token, account, profile }) {
-      // Persist Google sub as token.sub on first sign-in
-      if (account?.providerAccountId) {
-        token.sub = account.providerAccountId
+    async jwt({ token, user, account }) {
+      const email = user?.email || token.email
+      if (email) {
+        token.email = email
+        try {
+          // Resolve exact profile id from database so token.sub ALWAYS matches profiles.id
+          const existing = await db.query.profiles.findFirst({
+            where: eq(profiles.email, email),
+            columns: { id: true },
+          })
+          if (existing?.id) {
+            token.sub = existing.id
+          } else if (account?.providerAccountId) {
+            token.sub = account.providerAccountId
+          }
+        } catch (err) {
+          console.error('[auth] jwt resolve profile error:', err)
+          if (account?.providerAccountId) {
+            token.sub = account.providerAccountId
+          }
+        }
       }
       return token
     },
@@ -42,6 +66,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Expose user ID from JWT sub to session
       if (token.sub) {
         session.user.id = token.sub
+      }
+      if (token.email) {
+        session.user.email = token.email
       }
       return session
     },

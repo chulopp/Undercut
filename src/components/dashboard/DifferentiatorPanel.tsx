@@ -17,15 +17,26 @@ export function DifferentiatorPanel() {
   const toast = useToast();
 
   useEffect(() => {
-    getProfile().then((p) => {
-      setProfile(p);
-      setDiffs([
-        p.differentiators.differentiator_1,
-        p.differentiators.differentiator_2,
-        p.differentiators.differentiator_3,
-      ]);
-      setLoading(false);
-    });
+    getProfile()
+      .then((p) => {
+        setProfile(p);
+        const diffObj = p?.differentiators || ({} as Record<string, string>);
+        setDiffs([
+          diffObj.differentiator_1 || "10x Faster Execution",
+          diffObj.differentiator_2 || "Zero Setup Fees",
+          diffObj.differentiator_3 || "AI-Powered Automation",
+        ]);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("[DifferentiatorPanel] Failed to load profile:", err);
+        setDiffs([
+          "10x Faster Execution",
+          "Zero Setup Fees",
+          "AI-Powered Automation",
+        ]);
+        setLoading(false);
+      });
   }, []);
 
   const handleSave = async () => {

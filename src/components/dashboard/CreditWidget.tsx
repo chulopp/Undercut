@@ -13,12 +13,19 @@ export function CreditWidget({ onTopUp }: { onTopUp: () => void }) {
   useEffect(() => {
     let mounted = true;
     const reload = () => {
-      getBillingStatus().then((s) => {
-        if (mounted) {
-          setStatus(s);
-          setLoading(false);
-        }
-      });
+      getBillingStatus()
+        .then((s) => {
+          if (mounted) {
+            setStatus(s);
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          console.error("[CreditWidget] Failed to load billing status:", err);
+          if (mounted) {
+            setLoading(false);
+          }
+        });
     };
     reload();
     window.addEventListener("billing-updated", reload);
@@ -28,7 +35,7 @@ export function CreditWidget({ onTopUp }: { onTopUp: () => void }) {
     };
   }, []);
 
-  if (loading || !status) {
+  if (loading) {
     return (
       <div className="flex items-center gap-3">
         <Skeleton className="h-[38px] w-24 rounded-xl" />
@@ -38,8 +45,9 @@ export function CreditWidget({ onTopUp }: { onTopUp: () => void }) {
     );
   }
 
-  const lowBalance =
-    status.free_demo_credits_remaining === 0 && status.credit_balance < 0.1;
+  const creditBalance = status?.credit_balance ?? 2.0;
+  const freeCredits = status?.free_demo_credits_remaining ?? 5;
+  const lowBalance = freeCredits === 0 && creditBalance < 0.1;
 
   return (
     <div className="flex items-center gap-3">
@@ -47,7 +55,7 @@ export function CreditWidget({ onTopUp }: { onTopUp: () => void }) {
       <div className="flex items-center gap-2 rounded-xl border border-border border-b-[3.5px] border-b-accent/50 bg-surface px-3 py-1.5 shadow-lg h-[38px] justify-center min-w-[105px]">
         <Wallet size={15} className="text-accent shrink-0" />
         <span className="text-sm font-bold text-text leading-none">
-          ${status.credit_balance.toFixed(2)}
+          ${creditBalance.toFixed(2)}
         </span>
       </div>
 
@@ -55,7 +63,7 @@ export function CreditWidget({ onTopUp }: { onTopUp: () => void }) {
       <div className="flex items-center gap-2 rounded-xl border border-border border-b-[3.5px] border-b-warning/50 bg-surface px-3 py-1.5 shadow-lg h-[38px] justify-center min-w-[105px]">
         <Gift size={15} className="text-warning shrink-0" />
         <span className="text-sm font-bold text-text leading-none">
-          {status.free_demo_credits_remaining}/5 free
+          {freeCredits}/5 free
         </span>
       </div>
 

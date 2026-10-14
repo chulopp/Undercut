@@ -11,7 +11,7 @@ import {
   billingLedger,
   paymentTransactions,
 } from '@/lib/db/schema'
-import { eq, and, inArray, desc, count, gte, sql } from 'drizzle-orm'
+import { eq, and, or, inArray, desc, count, gte, sql } from 'drizzle-orm'
 import type {
   Profile,
   ProfileInput,
@@ -32,7 +32,7 @@ export type { Profile, ProfileInput, Competitor, Lead, Platform, BillingEntry, T
 export async function getProfile(userId: string): Promise<Profile | null> {
   try {
     const row = await db.query.profiles.findFirst({
-      where: eq(profiles.id, userId),
+      where: or(eq(profiles.id, userId), eq(profiles.email, userId)),
     })
     if (!row) return null
     return row as unknown as Profile
@@ -59,6 +59,9 @@ export async function saveProfile(userId: string, input: ProfileInput): Promise<
   })
 
   try {
+    const existing = await getProfile(userId)
+    const targetId = existing?.id || userId
+
     const [row] = await db
       .update(profiles)
       .set({
@@ -66,7 +69,7 @@ export async function saveProfile(userId: string, input: ProfileInput): Promise<
         onboarding_completed: onboardingCompleted,
         updated_at: new Date(),
       } as unknown as Partial<typeof profiles.$inferInsert>)
-      .where(eq(profiles.id, userId))
+      .where(eq(profiles.id, targetId))
       .returning()
 
     if (!row) return null
@@ -265,18 +268,18 @@ export async function getBillingStatus(userId: string): Promise<BillingStatus | 
   try {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
-    const [profileRow, allLeads] = await Promise.all([
-      db.query.profiles.findFirst({
-        where: eq(profiles.id, userId),
-        columns: { credit_balance: true, free_demo_credits_remaining: true, free_demo_reset_at: true },
-      }),
-      db
-        .select({ status: leadsQueue.status, created_at: leadsQueue.created_at })
-        .from(leadsQueue)
-        .where(eq(leadsQueue.profile_id, userId)),
-    ])
+    const profileRow = await db.query.profiles.findFirst({
+      where: or(eq(profiles.id, userId), eq(profiles.email, userId)),
+      columns: { id: true, credit_balance: true, free_demo_credits_remaining: true, free_demo_reset_at: true },
+    })
 
     if (!profileRow) return null
+    const targetId = profileRow.id
+
+    const allLeads = await db
+      .select({ status: leadsQueue.status, created_at: leadsQueue.created_at })
+      .from(leadsQueue)
+      .where(eq(leadsQueue.profile_id, targetId))
 
     const leadsThisWeek = allLeads.filter((l) => new Date(l.created_at) >= weekAgo).length
     const leadsRepliedTotal = allLeads.filter((l) => l.status === 'REPLIED').length
