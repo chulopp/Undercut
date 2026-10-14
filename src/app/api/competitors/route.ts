@@ -1,24 +1,22 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { auth } from '@/lib/auth'
 import { listCompetitors, addCompetitor } from '@/lib/server-data'
 import type { Platform } from '@/lib/types'
 
 export async function GET(request: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
   const platform = searchParams.get('platform') as Platform | null
 
-  const competitors = await listCompetitors(user.id, platform ?? undefined)
+  const competitors = await listCompetitors(session.user.id, platform ?? undefined)
   return NextResponse.json(competitors)
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: { competitor_name: string; platform: Platform; search_query: string }
   try {
@@ -40,7 +38,7 @@ export async function POST(request: Request) {
     ? search_query.replace(/^@/, '').trim()
     : search_query.trim()
 
-  const { data, error } = await addCompetitor(user.id, {
+  const { data, error } = await addCompetitor(session.user.id, {
     competitor_name: competitor_name.trim(),
     platform,
     search_query: normalizedQuery,

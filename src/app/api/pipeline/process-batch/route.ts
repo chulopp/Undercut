@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { auth } from '@/lib/auth'
 import { mapWithConcurrency, CONCURRENCY_GATE2_BATCH } from '@/lib/pipeline/concurrency'
 import { processLeadPipeline } from '@/lib/pipeline/helpers'
 
@@ -13,9 +13,8 @@ interface BatchItemResult {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: { lead_ids: string[] }
   try {
@@ -32,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Maximum 20 leads per batch' }, { status: 400 })
   }
 
-  const userId = user.id
+  const userId = session.user.id
 
   // Process a single lead via the internal pipeline helper
   async function processOne(lead_id: string): Promise<BatchItemResult> {
@@ -85,4 +84,3 @@ export async function POST(request: Request) {
     results: allResults,
   })
 }
-

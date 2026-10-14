@@ -1,5 +1,5 @@
+import { auth } from '@/lib/auth'
 import { NextResponse, type NextRequest } from 'next/server'
-import { updateSession } from '@/utils/supabase/middleware'
 
 // Routes that are always public (no auth required)
 const PUBLIC_ROUTES = ['/', '/login', '/privacy', '/terms']
@@ -21,38 +21,25 @@ function isPublicRoute(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Step 0: Portfolio / Demo mode bypass (Zero latency, never waits for Supabase cloud)
-  const isDemo = request.cookies.get('undercut_demo_mode')?.value === 'true'
-  if (isDemo) {
-    return NextResponse.next()
-  }
-
   // Step 1: If it's a public route, just return (no auth gating)
   if (isPublicRoute(pathname)) {
     return NextResponse.next()
   }
 
-  // Step 2: Always refresh the session for live protected routes (required by @supabase/ssr)
-  const { supabaseResponse, user } = await updateSession(request)
+  // Step 2: Check session via NextAuth
+  const session = await auth()
 
   // Step 3: Not logged in → redirect to / (landing page)
-  if (!user) {
+  if (!session?.user?.id) {
     const loginUrl = new URL('/', request.url)
     loginUrl.searchParams.set('auth', 'required')
     return NextResponse.redirect(loginUrl)
   }
 
-  // Step 4: Logged in but onboarding check needed
-  // /profile is allowed even without onboarding complete (it IS the onboarding page)
-  if (pathname.startsWith('/profile')) {
-    return supabaseResponse
-  }
-
+  // Step 4: /profile is allowed even without onboarding complete (it IS the onboarding page)
   // Step 5: Dashboard/billing routes are freely accessible once logged in.
   // Onboarding is triggered contextually on the client side (first "Generate Draft" click)
-  // rather than forcing a redirect — users see an interactive demo first.
-
-  return supabaseResponse
+  return NextResponse.next()
 }
 
 export const config = {

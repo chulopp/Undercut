@@ -8,9 +8,8 @@ import { Reveal } from "@/components/ui/Reveal";
 import { Button } from "@/components/ui/Button";
 import { XIcon } from "@/components/ui/BrandIcons";
 import { useAuthModal } from "@/components/AuthModalProvider";
-import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
+import { useSession } from "next-auth/react";
 
 const EXAMPLES = [
   {
@@ -242,20 +241,12 @@ function TweetCard({
 
 export function LiveDemoWidget() {
   const router = useRouter();
-  const supabase = createClient();
+  const { data: session } = useSession();
   const { open } = useAuthModal();
-  const [user, setUser] = useState<User | null>(null);
+  const user = session?.user;
   const [index, setIndex] = useState(0);
   const example = EXAMPLES[index];
   const next = () => setIndex((p) => (p + 1) % EXAMPLES.length);
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-    };
-    getSession();
-  }, [supabase]);
 
   const handleStartFree = () => {
     if (user) {

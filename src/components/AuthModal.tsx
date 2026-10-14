@@ -2,11 +2,10 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { X, Sparkles, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
+import { X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useAuthModal } from "@/components/AuthModalProvider";
-import { createClient } from "@/utils/supabase/client";
-import { activateDemoSession } from "@/lib/demo-storage";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 
 function GoogleIcon() {
@@ -34,13 +33,11 @@ function GoogleIcon() {
 
 export function AuthModal() {
   const { isOpen, close } = useAuthModal();
-  const [showLiveWarning, setShowLiveWarning] = useState(false);
-  const [enteringDemo, setEnteringDemo] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
-      setShowLiveWarning(false);
-      setEnteringDemo(false);
+      setIsLoading(false);
       return;
     }
     const onKey = (e: KeyboardEvent) => {
@@ -54,27 +51,12 @@ export function AuthModal() {
     };
   }, [isOpen, close]);
 
-  const handleEnterDemo = () => {
-    setEnteringDemo(true);
-    activateDemoSession();
-    // Hard browser navigation ensures the undercut_demo_mode cookie
-    // is cleanly passed in HTTP headers and client router state is refreshed.
-    window.location.href = "/dashboard/x";
-  };
-
   const handleGoogleSignIn = async () => {
-    // Show warning banner since live Supabase cloud is offline for portfolio mode
-    setShowLiveWarning(true);
+    setIsLoading(true);
     try {
-      const supabase = createClient();
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
-        },
-      });
+      await signIn("google", { callbackUrl: "/dashboard/x" });
     } catch {
-      // Ignored: warning message already guides user to Demo Mode
+      setIsLoading(false);
     }
   };
 
@@ -116,62 +98,40 @@ export function AuthModal() {
                 Welcome to Undercut
               </h2>
               <p className="mt-1.5 text-sm text-muted">
-                Explore social FUD interceptor with{" "}
-                <span className="font-semibold text-accent">5 free demo tokens</span>.
+                Sign in to intercept competitor FUD and{" "}
+                <span className="font-semibold text-accent">start converting leads</span>.
               </p>
             </div>
 
-            {/* Live Mode Notice / Alert */}
-            {showLiveWarning && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-5 rounded-xl border border-warning/30 bg-warning/10 p-3.5 text-left text-xs text-warning"
-              >
-                <div className="flex items-center gap-2 font-semibold">
-                  <AlertTriangle size={15} className="shrink-0" />
-                  <span>Google OAuth Offline (Portfolio Mode)</span>
-                </div>
-                <p className="mt-1 text-[11px] leading-relaxed text-text/80">
-                  Layanan live cloud sedang dinonaktifkan untuk demonstrasi portofolio.
-                  Silakan gunakan tombol <strong>Masuk Mode Demo</strong> di bawah untuk menjelajah aplikasi secara instan.
-                </p>
-              </motion.div>
-            )}
-
             <div className="space-y-3">
-              {/* Primary 3D Tactile Button: Demo Access */}
+              {/* Primary Button: Sign in with Google */}
               <button
-                onClick={handleEnterDemo}
-                disabled={enteringDemo}
-                className="group relative flex w-full items-center justify-center gap-2 rounded-xl border border-t-white/30 border-b-[3.5px] border-b-blue-700/90 border-x-blue-600/30 bg-gradient-to-b from-accent-hover to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-accent/20 transition-all hover:brightness-105 active:translate-y-0.5 cursor-pointer disabled:opacity-80 disabled:cursor-wait"
+                id="google-signin-btn"
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="group relative flex w-full items-center justify-center gap-2.5 rounded-xl border border-t-white/30 border-b-[3.5px] border-b-blue-700/90 border-x-blue-600/30 bg-gradient-to-b from-accent-hover to-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-accent/20 transition-all hover:brightness-105 active:translate-y-0.5 cursor-pointer disabled:opacity-70 disabled:cursor-wait"
               >
-                {enteringDemo ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin text-white" />
-                    <span>Memuat Mode Demo...</span>
-                  </>
+                {isLoading ? (
+                  <span>Redirecting to Google...</span>
                 ) : (
                   <>
-                    <Sparkles size={16} className="text-white/90 transition-transform group-hover:rotate-12" />
-                    <span>Masuk Mode Demo (Instant Access)</span>
-                    <ArrowRight size={15} className="ml-1 opacity-70 transition-transform group-hover:translate-x-1" />
+                    <GoogleIcon />
+                    <span>Continue with Google</span>
                   </>
                 )}
-              </button>
-
-              {/* Secondary Button: Sign in with Google */}
-              <button
-                onClick={handleGoogleSignIn}
-                className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-surface-2 px-5 py-2.5 text-xs font-medium text-muted transition-colors hover:border-border/80 hover:text-text cursor-pointer"
-              >
-                <GoogleIcon />
-                <span>Sign in with Google (Live Mode)</span>
               </button>
             </div>
 
             <p className="mt-6 text-center text-[11px] text-muted/70">
-              Demo mode stores session in your browser. No card or real login required.
+              By continuing, you agree to our{" "}
+              <Link href="/terms" className="underline hover:text-text" onClick={close}>
+                Terms
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="underline hover:text-text" onClick={close}>
+                Privacy Policy
+              </Link>
+              .
             </p>
           </motion.div>
         </motion.div>

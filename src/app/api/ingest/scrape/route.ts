@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { auth } from '@/lib/auth'
 import { listCompetitors, getLastScrapeTime } from '@/lib/server-data'
 import { mapWithConcurrency, CONCURRENCY_SCRAPE_TARGETS } from '@/lib/pipeline/concurrency'
 import { processScrapeTarget } from '@/lib/pipeline/helpers'
@@ -10,9 +10,9 @@ import type { Platform } from '@/lib/types'
 const AUTO_SCRAPE_INTERVAL_MS = (24 * 60 * 60 * 1000) / 10 // 2.4 hours
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = session.user.id
 
   let body: {
     competitor_target_id?: string
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const { competitor_target_id, platform, force = false } = body
 
   // Fetch active competitors to scrape
-  const allCompetitors = await listCompetitors(user.id, platform)
+  const allCompetitors = await listCompetitors(userId, platform)
   const targets = competitor_target_id
     ? allCompetitors.filter((c) => c.id === competitor_target_id)
     : allCompetitors.filter((c) => c.is_active)
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   // Throttle check: for auto-scrape, check when we last scraped this platform
   if (!force && targets.length > 0) {
     const checkPlatform = platform ?? targets[0].platform as Platform
-    const lastScrape = await getLastScrapeTime(user.id, checkPlatform)
+    const lastScrape = await getLastScrapeTime(userId, checkPlatform)
     if (lastScrape) {
       const msSinceLast = Date.now() - lastScrape.getTime()
       if (msSinceLast < AUTO_SCRAPE_INTERVAL_MS) {
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   const targetResults = await mapWithConcurrency(
     targets,
     CONCURRENCY_SCRAPE_TARGETS,
-    (target) => processScrapeTarget(user.id, target)
+    (target) => processScrapeTarget(userId, target)
   )
 
   let totalScraped = 0

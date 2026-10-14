@@ -2,23 +2,19 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
+import { useSession } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const { status } = useSession();
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        router.push("/dashboard/x");
-      } else {
-        router.push("/?auth=required");
-      }
-    };
-    checkUser();
-  }, [router, supabase]);
+    if (status === "authenticated") {
+      router.push("/dashboard/x");
+    } else if (status === "unauthenticated") {
+      router.push("/?auth=required");
+    }
+  }, [router, status]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg text-muted">

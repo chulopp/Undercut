@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthModalProvider } from "@/components/AuthModalProvider";
 import { AuthModal } from "@/components/AuthModal";
 import { ToastProvider } from "@/components/ui/Toast";
+import { SessionProvider } from "next-auth/react";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
@@ -55,12 +56,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakarta.variable} ${playfair.variable} dark`}>
       <body className="min-h-screen bg-bg text-text antialiased">
-        <AuthModalProvider>
-          <ToastProvider>
-            {children}
-            <AuthModal />
-          </ToastProvider>
-        </AuthModalProvider>
+        <SessionProvider>
+          <AuthModalProvider>
+            <ToastProvider>
+              {children}
+              <AuthModal />
+            </ToastProvider>
+          </AuthModalProvider>
+        </SessionProvider>
       </body>
     </html>
   );

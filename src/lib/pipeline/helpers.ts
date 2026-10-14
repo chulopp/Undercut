@@ -1,12 +1,18 @@
-import { createServiceRoleClient } from '@/utils/supabase/service-role'
-import { updateLeadAfterPipeline } from '@/lib/server-data'
+import { db } from '@/lib/db'
+import { leadsQueue, competitorTargets } from '@/lib/db/schema'
+import { and, eq, inArray } from 'drizzle-orm'
+import {
+  updateLeadAfterPipeline,
+  consumeCycleCredit,
+  getProfile,
+  insertLeads,
+} from '@/lib/server-data'
 import { scrapeX, scrapeInstagram } from '@/lib/scraper'
 import { fuzzyPreFilter } from '@/lib/fud-keywords'
 import { runGate1 } from '@/lib/pipeline/gate1'
 import { runGate2 } from '@/lib/pipeline/gate2'
 import type { Platform, Competitor } from '@/lib/types'
 import { mapWithConcurrency, CONCURRENCY_SCRAPE_TARGETS } from './concurrency'
-import { insertLeads } from '@/lib/server-data'
 
 export interface ScrapeTargetResult {
   competitor_name: string
@@ -65,31 +71,14 @@ export async function processScrapeTarget(
       return result
     }
 
-    // 3. Deduplicate (scoped by profile_id)
-    const ids = fuzzyPassed.map((p) => p.external_post_id)
-    const admin = createServiceRoleClient()
-    const { data: existing } = await admin
-      .from('leads_queue')
-      .select('external_post_id')
-      .eq('profile_id', userId)
-      .in('external_post_id', ids)
-
-    const existingIds = new Set((existing ?? []).map((e) => e.external_post_id))
-    const deduplicated = fuzzyPassed.filter((p) => !existingIds.has(p.external_post_id))
-    result.duplicates = existingIds.size
-
-    if (deduplicated.length === 0) {
-      return result
-    }
-
-    // 4. Insert all posts as PENDING (gate_1_passed=false — Gate 1 runs on "Generate Draft")
-    const postsToInsert = deduplicated.map((p) => ({
+    // 3. Deduplicate (via insertLeads which handles this internally)
+    const postsToInsert = fuzzyPassed.map((p) => ({
       ...p,
       gate_1_passed: false,
       status: 'PENDING' as const,
     }))
 
-    const { inserted } = await insertLeads(
+    const { inserted, duplicates } = await insertLeads(
       userId,
       target.id,
       target.platform,
@@ -97,6 +86,7 @@ export async function processScrapeTarget(
     )
 
     result.inserted = inserted
+    result.duplicates = duplicates
     return result
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -117,7 +107,7 @@ export interface ProcessLeadResult {
 /**
  * Unified pipeline for processing a single lead (called when user clicks "Generate Draft").
  * 1. Run Gate 1 if not yet verified
- * 2. Consume credit
+ * 2. Consume credit (via consumeCycleCredit — TypeScript replacement for stored procedure)
  * 3. Run Gate 2 to generate personalized reply draft
  * 4. Save result to DB
  */
@@ -128,32 +118,29 @@ export async function processLeadPipeline(
   const pipelineStart = Date.now()
 
   // 1. Fetch lead (ensure owner check)
-  const admin = createServiceRoleClient()
-  const { data: lead, error: leadErr } = await admin
-    .from('leads_queue')
-    .select('*')
-    .eq('id', leadId)
-    .eq('profile_id', userId)
-    .single()
+  const lead = await db.query.leadsQueue.findFirst({
+    where: and(eq(leadsQueue.id, leadId), eq(leadsQueue.profile_id, userId)),
+  })
 
-  if (leadErr || !lead) {
+  if (!lead) {
     throw new Error('Lead not found or access denied')
   }
 
   // 2. Run Gate 1 relevance check if not yet verified
   if (!lead.gate_1_passed) {
-    const { data: competitor } = await admin
-      .from('competitor_targets')
-      .select('competitor_name')
-      .eq('id', lead.competitor_target_id)
-      .single()
+    const competitorRow = lead.competitor_target_id
+      ? await db.query.competitorTargets.findFirst({
+          where: eq(competitorTargets.id, lead.competitor_target_id),
+          columns: { competitor_name: true },
+        })
+      : null
 
-    const competitorName = competitor?.competitor_name || 'Competitor'
+    const competitorName = competitorRow?.competitor_name || 'Competitor'
     const classification = await runGate1(lead.raw_content, competitorName, 15000)
 
     if (!classification.passed) {
       // Delete the lead from leads_queue immediately if rejected by AI Gate 1
-      await admin.from('leads_queue').delete().eq('id', leadId)
+      await db.delete(leadsQueue).where(eq(leadsQueue.id, leadId))
 
       return {
         result: 'REJECTED',
@@ -162,28 +149,20 @@ export async function processLeadPipeline(
     }
 
     // Mark Gate 1 passed before billing check
-    await admin
-      .from('leads_queue')
-      .update({
+    await db
+      .update(leadsQueue)
+      .set({
         gate_1_passed: true,
         gate_1_model_used: classification.model_used,
       })
-      .eq('id', leadId)
+      .where(eq(leadsQueue.id, leadId))
 
     lead.gate_1_passed = true
     lead.gate_1_model_used = classification.model_used
   }
 
-  // 3. Billing Check & Balance Consumption
-  const { data: creditResult, error: creditErr } = await admin
-    .rpc('consume_cycle_credit', {
-      p_profile_id: userId,
-      p_lead_id: leadId,
-    })
-
-  if (creditErr) {
-    throw new Error(`Credit check failed: ${creditErr.message}`)
-  }
+  // 3. Billing Check & Balance Consumption (atomic TypeScript transaction — replaces SQL stored procedure)
+  const creditResult = await consumeCycleCredit(userId, leadId)
 
   if (creditResult === 'INSUFFICIENT_BALANCE') {
     await updateLeadAfterPipeline(leadId, {
@@ -199,13 +178,9 @@ export async function processLeadPipeline(
   }
 
   // 4. Generate reply via Gate 2
-  const { data: profile, error: profileErr } = await admin
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
+  const profile = await getProfile(userId)
 
-  if (profileErr || !profile) {
+  if (!profile) {
     throw new Error('Profile not found')
   }
 
@@ -218,7 +193,7 @@ export async function processLeadPipeline(
     gate2Result = await runGate2(
       lead.raw_content,
       lead.author_username,
-      lead.platform,
+      lead.platform as Platform,
       profile,
       gate2TimeoutMs
     )

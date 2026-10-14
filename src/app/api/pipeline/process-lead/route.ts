@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { auth } from '@/lib/auth'
 import { processLeadPipeline } from '@/lib/pipeline/helpers'
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: { lead_id: string }
   try {
@@ -18,7 +17,7 @@ export async function POST(request: Request) {
   if (!lead_id) return NextResponse.json({ error: 'Missing lead_id' }, { status: 400 })
 
   try {
-    const result = await processLeadPipeline(user.id, lead_id)
+    const result = await processLeadPipeline(session.user.id, lead_id)
     return NextResponse.json(result)
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -26,4 +25,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
-

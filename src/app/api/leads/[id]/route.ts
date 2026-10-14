@@ -1,26 +1,22 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
-import { updateLeadStatus } from '@/lib/server-data'
-import { createServiceRoleClient } from '@/utils/supabase/service-role'
+import { auth } from '@/lib/auth'
+import { db } from '@/lib/db'
+import { leadsQueue } from '@/lib/db/schema'
+import { and, eq } from 'drizzle-orm'
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const admin = createServiceRoleClient()
-  const { data: lead, error } = await admin
-    .from('leads_queue')
-    .select('*')
-    .eq('id', id)
-    .eq('profile_id', user.id)
-    .single()
+  const lead = await db.query.leadsQueue.findFirst({
+    where: and(eq(leadsQueue.id, id), eq(leadsQueue.profile_id, session.user.id)),
+  })
 
-  if (error || !lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+  if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
   return NextResponse.json(lead)
 }
 
@@ -28,22 +24,17 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const admin = createServiceRoleClient()
-  const { error } = await admin
-    .from('leads_queue')
-    .delete()
-    .eq('id', id)
-    .eq('profile_id', user.id)
-
-  if (error) {
-    console.error('[server-data] delete lead error:', error)
+  try {
+    await db
+      .delete(leadsQueue)
+      .where(and(eq(leadsQueue.id, id), eq(leadsQueue.profile_id, session.user.id)))
+    return NextResponse.json({ deleted: true })
+  } catch (err) {
+    console.error('[leads/[id]] delete lead error:', err)
     return NextResponse.json({ error: 'Failed to delete lead' }, { status: 500 })
   }
-
-  return NextResponse.json({ deleted: true })
 }

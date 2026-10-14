@@ -9,8 +9,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { listLeads, triggerScrape, deletePlatformLeads } from "@/lib/data";
-import { createClient } from "@/utils/supabase/client";
-import { isDemoSession } from "@/lib/demo-storage";
 import type { Lead, Platform } from "@/lib/types";
 
 const COACHMARK_KEY = "undercut:coachmark-seen";
@@ -25,8 +23,7 @@ export function LeadQueue({ platform }: { platform: Platform }) {
   const [showCoachmark, setShowCoachmark] = useState(false);
   const [demoDismissed, setDemoDismissed] = useState(false);
   const toast = useToast();
-  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
-  // Track whether a manual scrape is in progress to suppress per-lead Realtime toasts
+  // Track whether a manual scrape is in progress to suppress per-lead toasts
   const scrapingRef = useRef(false);
 
   const fetchLeads = useCallback(async () => {
@@ -72,65 +69,14 @@ export function LeadQueue({ platform }: { platform: Platform }) {
     });
   }, [platform]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Supabase Realtime — subscribe to new leads for this platform
+  // Polling fallback to keep queue updated
   useEffect(() => {
-    if (isDemoSession()) return;
-    const supabase = createClient();
+    const interval = setInterval(() => {
+      fetchLeads();
+    }, 20000);
 
-    // Clean up previous channel if platform changes
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
-
-    const channel = supabase
-      .channel(`leads-${platform}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "leads_queue",
-          filter: `platform=eq.${platform}`,
-        },
-        (payload) => {
-          const newLead = payload.new as Lead;
-          // Only add if it's in a showable state
-          if (["PENDING", "PENDING_PAYMENT"].includes(newLead.status)) {
-            setLeads((prev) => {
-              if (prev.some((l) => l.id === newLead.id)) return prev;
-              // Only toast for individual leads when NOT in the middle of a manual scrape
-              // (manual scrape shows its own batch summary toast after fetchLeads completes)
-              if (!scrapingRef.current) {
-                toast.success("New lead found!");
-              }
-              return [newLead, ...prev];
-            });
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "leads_queue",
-          filter: `platform=eq.${platform}`,
-        },
-        (payload) => {
-          const updated = payload.new as Lead;
-          setLeads((prev) =>
-            prev.map((l) => (l.id === updated.id ? { ...l, ...updated } : l))
-          );
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [platform, toast]);
+    return () => clearInterval(interval);
+  }, [fetchLeads]);
 
   const handleScrapeMore = async () => {
     setScraping(true);

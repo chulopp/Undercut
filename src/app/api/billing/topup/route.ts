@@ -1,19 +1,12 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
-import { createServiceRoleClient } from '@/utils/supabase/service-role'
+import { auth } from '@/lib/auth'
 import { stripe } from '@/lib/stripe'
+import { createPaymentTransaction } from '@/lib/server-data'
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    const session = await auth()
+    if (!session?.user?.id || !session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -25,7 +18,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // 2. Parse body
+    // Parse body
     const body = await request.json()
     const amountUsd = parseFloat(body.amount_usd)
 
@@ -33,13 +26,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Minimum top-up amount is $2.00' }, { status: 400 })
     }
 
-    // 3. Configuration & Constants for Bonus calculation
+    // Configuration & Constants for Bonus calculation
     const tier1Threshold = parseFloat(process.env.TOPUP_BONUS_TIER_1_THRESHOLD || '50')
     const tier1Percent = parseFloat(process.env.TOPUP_BONUS_TIER_1_PERCENT || '3') / 100
     const tier2Threshold = parseFloat(process.env.TOPUP_BONUS_TIER_2_THRESHOLD || '100')
     const tier2Percent = parseFloat(process.env.TOPUP_BONUS_TIER_2_PERCENT || '5') / 100
 
-    // 4. Calculate credit granted (with bonus)
+    // Calculate credit granted (with bonus)
     let creditGrantedUsd = amountUsd
     if (amountUsd >= tier2Threshold) {
       creditGrantedUsd = amountUsd * (1 + tier2Percent)
@@ -47,33 +40,27 @@ export async function POST(request: Request) {
       creditGrantedUsd = amountUsd * (1 + tier1Percent)
     }
 
-    const gatewayOrderId = `undercut-topup-${user.id.substring(0, 8)}-${Date.now()}`
+    const gatewayOrderId = `undercut-topup-${session.user.id.substring(0, 8)}-${Date.now()}`
 
-    // 5. Save pending transaction in Supabase (use Service Role client to bypass RLS)
-    const admin = createServiceRoleClient()
-    const { error: dbError } = await admin
-      .from('payment_transactions')
-      .insert({
-        profile_id: user.id,
-        gateway: 'stripe',
-        gateway_order_id: gatewayOrderId,
-        top_up_amount_usd: amountUsd,
-        credit_granted_usd: creditGrantedUsd,
-        amount_idr: 0, // 0 since we're charging directly in USD
-        status: 'PENDING',
-      })
+    // Save pending transaction in Neon via Drizzle
+    const transaction = await createPaymentTransaction({
+      profile_id: session.user.id,
+      gateway: 'stripe',
+      gateway_order_id: gatewayOrderId,
+      top_up_amount_usd: amountUsd.toFixed(4),
+      credit_granted_usd: creditGrantedUsd.toFixed(4),
+      amount_idr: 0, // 0 since we're charging directly in USD
+    })
 
-    if (dbError) {
-      console.error('Database transaction insert error:', dbError)
+    if (!transaction) {
       return NextResponse.json({ error: 'Failed to record transaction' }, { status: 500 })
     }
 
-    // 6. Create Stripe Checkout Session
-    // Dynamically retrieve origin to handle Vercel deployment and local dev correctly
+    // Create Stripe Checkout Session
     const requestUrl = new URL(request.url)
     const origin = request.headers.get('origin') || requestUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-    const session = await stripe.checkout.sessions.create({
+    const stripeSession = await stripe.checkout.sessions.create({
       line_items: [
         {
           price_data: {
@@ -90,19 +77,18 @@ export async function POST(request: Request) {
       mode: 'payment',
       success_url: `${origin}/dashboard/x?payment=success&order_id=${gatewayOrderId}&amount=${amountUsd}`,
       cancel_url: `${origin}/dashboard/x?payment=cancelled`,
-      customer_email: user.email,
+      customer_email: session.user.email,
       metadata: {
-        userId: user.id,
+        userId: session.user.id,
         amountUsd: amountUsd.toString(),
         creditGrantedUsd: creditGrantedUsd.toString(),
         gatewayOrderId: gatewayOrderId,
       },
     })
 
-    // Return the session details to client
     return NextResponse.json({
-      id: session.id,
-      url: session.url,
+      id: stripeSession.id,
+      url: stripeSession.url,
       order_id: gatewayOrderId,
     })
   } catch (error: unknown) {

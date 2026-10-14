@@ -5,10 +5,8 @@ import { ArrowRight, Send } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { XIcon, InstagramIcon } from "@/components/ui/BrandIcons";
 import { useAuthModal } from "@/components/AuthModalProvider";
-import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
+import { useSession } from "next-auth/react";
 
 const VerifiedBadge = () => (
   <svg className="h-4 w-4 text-[#1D9BF0] fill-current inline-block shrink-0" viewBox="0 0 24 24" aria-label="Verified account">
@@ -121,17 +119,9 @@ function ReplyCard() {
 
 export function Hero() {
   const router = useRouter();
-  const supabase = createClient();
+  const { data: session } = useSession();
   const { open } = useAuthModal();
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-    };
-    getSession();
-  }, [supabase]);
+  const user = session?.user;
 
   const handleStartFree = () => {
     if (user) {

@@ -2,14 +2,12 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Menu, X, Sparkles, Loader2 } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { useAuthModal } from "@/components/AuthModalProvider";
-import { createClient } from "@/utils/supabase/client";
-import { activateDemoSession } from "@/lib/demo-storage";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 
 const NAV_LINKS = [
@@ -21,19 +19,11 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const router = useRouter();
-  const supabase = createClient();
+  const { data: session } = useSession();
   const { open } = useAuthModal();
 
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [enteringDemo, setEnteringDemo] = useState(false);
-
-  const handleEnterDemo = () => {
-    setEnteringDemo(true);
-    activateDemoSession();
-    window.location.href = "/dashboard/x";
-  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
@@ -41,39 +31,6 @@ export function Navbar() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    const checkAuth = async () => {
-      // Check demo session first
-      const { isDemoSession } = await import("@/lib/demo-storage");
-      if (isDemoSession() && active) {
-        // Create synthetic demo user
-        setUser({ id: "demo-user-undercut", email: "demo@undercut.app" } as User);
-        return;
-      }
-
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (active) setUser(session?.user ?? null);
-      } catch {
-        // Offline / Supabase unreachable
-      }
-    };
-    checkAuth();
-
-    try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (active) setUser(session?.user ?? null);
-      });
-      return () => {
-        active = false;
-        subscription.unsubscribe();
-      };
-    } catch {
-      return () => { active = false; };
-    }
-  }, [supabase]);
 
   useEffect(() => {
     if (menuOpen) {
@@ -85,6 +42,8 @@ export function Navbar() {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  const isLoggedIn = !!session?.user;
 
   return (
     <>
@@ -116,7 +75,7 @@ export function Navbar() {
           </div>
 
           <div className="hidden items-center gap-3 md:flex">
-            {user ? (
+            {isLoggedIn ? (
               <Button
                 variant="primary"
                 size="sm"
@@ -126,24 +85,8 @@ export function Navbar() {
               </Button>
             ) : (
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleEnterDemo}
-                  disabled={enteringDemo}
-                  className="border-accent/40 text-accent hover:border-accent hover:bg-accent/10"
-                >
-                  {enteringDemo ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin text-accent" />
-                      <span>Memuat...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={14} className="text-accent" />
-                      <span>Mode Demo</span>
-                    </>
-                  )}
+                <Button variant="ghost" size="sm" onClick={open}>
+                  Log In
                 </Button>
                 <Button variant="primary" size="sm" onClick={open}>
                   Start Free
@@ -205,7 +148,7 @@ export function Navbar() {
                 </motion.a>
               ))}
               <div className="mt-6 flex flex-col gap-3">
-                {user ? (
+                {isLoggedIn ? (
                   <Button
                     variant="primary"
                     onClick={() => {
@@ -221,22 +164,11 @@ export function Navbar() {
                       variant="ghost"
                       onClick={() => {
                         setMenuOpen(false);
-                        handleEnterDemo();
+                        open();
                       }}
-                      disabled={enteringDemo}
-                      className="border-accent/40 text-accent hover:border-accent hover:bg-accent/10 justify-center"
+                      className="justify-center"
                     >
-                      {enteringDemo ? (
-                        <>
-                          <Loader2 size={16} className="animate-spin text-accent" />
-                          <span>Memuat Demo...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={16} className="text-accent" />
-                          <span>Mode Demo</span>
-                        </>
-                      )}
+                      Log In
                     </Button>
                     <Button
                       variant="primary"

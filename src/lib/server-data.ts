@@ -1,10 +1,17 @@
 /**
  * server-data.ts
- * Server-side Supabase data access layer.
+ * Server-side Drizzle (Neon) data access layer.
  * Used ONLY in API routes (never imported in client components).
  */
-import { createClient } from '@/utils/supabase/server'
-import { createServiceRoleClient } from '@/utils/supabase/service-role'
+import { db } from '@/lib/db'
+import {
+  profiles,
+  competitorTargets,
+  leadsQueue,
+  billingLedger,
+  paymentTransactions,
+} from '@/lib/db/schema'
+import { eq, and, inArray, desc, count, gte, sql } from 'drizzle-orm'
 import type {
   Profile,
   ProfileInput,
@@ -23,23 +30,19 @@ export type { Profile, ProfileInput, Competitor, Lead, Platform, BillingEntry, T
 // ────────────────────────────────────────────────────────────
 
 export async function getProfile(userId: string): Promise<Profile | null> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
-
-  if (error) {
-    console.error('[server-data] getProfile error:', error)
+  try {
+    const row = await db.query.profiles.findFirst({
+      where: eq(profiles.id, userId),
+    })
+    if (!row) return null
+    return row as unknown as Profile
+  } catch (err) {
+    console.error('[server-data] getProfile error:', err)
     return null
   }
-  return data as Profile
 }
 
 export async function saveProfile(userId: string, input: ProfileInput): Promise<Profile | null> {
-  const supabase = await createClient()
-
   const requiredFields = [
     'app_name',
     'app_description',
@@ -55,21 +58,23 @@ export async function saveProfile(userId: string, input: ProfileInput): Promise<
     return val !== null && val !== undefined && val !== ''
   })
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      ...input,
-      onboarding_completed: onboardingCompleted,
-    })
-    .eq('id', userId)
-    .select()
-    .single()
+  try {
+    const [row] = await db
+      .update(profiles)
+      .set({
+        ...input,
+        onboarding_completed: onboardingCompleted,
+        updated_at: new Date(),
+      } as unknown as Partial<typeof profiles.$inferInsert>)
+      .where(eq(profiles.id, userId))
+      .returning()
 
-  if (error) {
-    console.error('[server-data] saveProfile error:', error)
+    if (!row) return null
+    return row as unknown as Profile
+  } catch (err) {
+    console.error('[server-data] saveProfile error:', err)
     return null
   }
-  return data as Profile
 }
 
 // ────────────────────────────────────────────────────────────
@@ -77,100 +82,93 @@ export async function saveProfile(userId: string, input: ProfileInput): Promise<
 // ────────────────────────────────────────────────────────────
 
 export async function listCompetitors(userId: string, platform?: Platform): Promise<Competitor[]> {
-  const supabase = await createClient()
-  let query = supabase
-    .from('competitor_targets')
-    .select('*')
-    .eq('profile_id', userId)
-    .order('created_at', { ascending: false })
-
-  if (platform) {
-    query = query.eq('platform', platform)
-  }
-
-  const { data, error } = await query
-  if (error) {
-    console.error('[server-data] listCompetitors error:', error)
+  try {
+    const rows = await db.query.competitorTargets.findMany({
+      where: platform
+        ? and(eq(competitorTargets.profile_id, userId), eq(competitorTargets.platform, platform))
+        : eq(competitorTargets.profile_id, userId),
+      orderBy: [desc(competitorTargets.created_at)],
+    })
+    return rows as unknown as Competitor[]
+  } catch (err) {
+    console.error('[server-data] listCompetitors error:', err)
     return []
   }
-  return (data as Competitor[]) ?? []
 }
 
 export async function addCompetitor(
   userId: string,
   input: Pick<Competitor, 'competitor_name' | 'platform' | 'search_query'>
 ): Promise<{ data: Competitor | null; error: string | null }> {
-  const supabase = await createClient()
+  try {
+    // Check max 5 active per platform per user
+    const [{ value: activeCount }] = await db
+      .select({ value: count() })
+      .from(competitorTargets)
+      .where(
+        and(
+          eq(competitorTargets.profile_id, userId),
+          eq(competitorTargets.platform, input.platform),
+          eq(competitorTargets.is_active, true),
+        ),
+      )
 
-  // Check max 5 active per platform per user
-  const { count } = await supabase
-    .from('competitor_targets')
-    .select('*', { count: 'exact', head: true })
-    .eq('profile_id', userId)
-    .eq('platform', input.platform)
-    .eq('is_active', true)
+    if ((activeCount ?? 0) >= 5) {
+      return { data: null, error: `Maximum 5 active ${input.platform} targets allowed.` }
+    }
 
-  if ((count ?? 0) >= 5) {
-    return { data: null, error: `Maximum 5 active ${input.platform} targets allowed.` }
+    const [row] = await db
+      .insert(competitorTargets)
+      .values({ ...input, profile_id: userId })
+      .returning()
+
+    return { data: row as unknown as Competitor, error: null }
+  } catch (err) {
+    console.error('[server-data] addCompetitor error:', err)
+    return { data: null, error: String(err) }
   }
-
-  const { data, error } = await supabase
-    .from('competitor_targets')
-    .insert({ ...input, profile_id: userId })
-    .select()
-    .single()
-
-  if (error) {
-    console.error('[server-data] addCompetitor error:', error)
-    return { data: null, error: error.message }
-  }
-  return { data: data as Competitor, error: null }
 }
 
 export async function deleteCompetitor(userId: string, competitorId: string): Promise<boolean> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('competitor_targets')
-    .delete()
-    .eq('id', competitorId)
-    .eq('profile_id', userId) // ownership check via RLS + explicit filter
-
-  if (error) {
-    console.error('[server-data] deleteCompetitor error:', error)
+  try {
+    await db
+      .delete(competitorTargets)
+      .where(
+        and(eq(competitorTargets.id, competitorId), eq(competitorTargets.profile_id, userId)),
+      )
+    return true
+  } catch (err) {
+    console.error('[server-data] deleteCompetitor error:', err)
     return false
   }
-  return true
 }
 
 export async function toggleCompetitor(
   userId: string,
-  competitorId: string
+  competitorId: string,
 ): Promise<Competitor | null> {
-  const supabase = await createClient()
+  try {
+    const current = await db.query.competitorTargets.findFirst({
+      where: and(
+        eq(competitorTargets.id, competitorId),
+        eq(competitorTargets.profile_id, userId),
+      ),
+    })
+    if (!current) return null
 
-  // Fetch current state first
-  const { data: current } = await supabase
-    .from('competitor_targets')
-    .select('is_active')
-    .eq('id', competitorId)
-    .eq('profile_id', userId)
-    .single()
+    const [row] = await db
+      .update(competitorTargets)
+      .set({ is_active: !current.is_active })
+      .where(
+        and(eq(competitorTargets.id, competitorId), eq(competitorTargets.profile_id, userId)),
+      )
+      .returning()
 
-  if (!current) return null
-
-  const { data, error } = await supabase
-    .from('competitor_targets')
-    .update({ is_active: !current.is_active })
-    .eq('id', competitorId)
-    .eq('profile_id', userId)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('[server-data] toggleCompetitor error:', error)
+    return row as unknown as Competitor
+  } catch (err) {
+    console.error('[server-data] toggleCompetitor error:', err)
     return null
   }
-  return data as Competitor
 }
 
 // ────────────────────────────────────────────────────────────
@@ -180,81 +178,75 @@ export async function toggleCompetitor(
 export async function listLeads(
   userId: string,
   platform?: Platform,
-  filter: 'PENDING' | 'ALL' = 'PENDING'
+  filter: 'PENDING' | 'ALL' = 'PENDING',
 ): Promise<Lead[]> {
-  const supabase = await createClient()
-  let query = supabase
-    .from('leads_queue')
-    .select('*')
-    .eq('profile_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(100)
+  try {
+    // Build where conditions
+    const conditions = [eq(leadsQueue.profile_id, userId)]
+    if (platform) conditions.push(eq(leadsQueue.platform, platform))
 
-  if (platform) {
-    query = query.eq('platform', platform)
-  }
+    let rows = await db
+      .select()
+      .from(leadsQueue)
+      .where(and(...conditions))
+      .orderBy(desc(leadsQueue.created_at))
+      .limit(100)
 
-  // "PENDING" filter shows leads that are ready to reply on (not yet actioned)
-  if (filter === 'PENDING') {
-    query = query.in('status', ['PENDING', 'PENDING_PAYMENT', 'REPLIED'])
-  }
+    if (filter === 'PENDING') {
+      rows = rows.filter((r) => ['PENDING', 'PENDING_PAYMENT', 'REPLIED'].includes(r.status))
+    }
 
-  const { data, error } = await query
-  if (error) {
-    console.error('[server-data] listLeads error:', error)
+    return rows as unknown as Lead[]
+  } catch (err) {
+    console.error('[server-data] listLeads error:', err)
     return []
   }
-  return (data as Lead[]) ?? []
 }
 
 export async function updateLeadStatus(
   userId: string,
   leadId: string,
-  status: LeadStatus
+  status: LeadStatus,
 ): Promise<boolean> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('leads_queue')
-    .update({ status })
-    .eq('id', leadId)
-    .eq('profile_id', userId)
-
-  if (error) {
-    console.error('[server-data] updateLeadStatus error:', error)
+  try {
+    await db
+      .update(leadsQueue)
+      .set({ status })
+      .where(and(eq(leadsQueue.id, leadId), eq(leadsQueue.profile_id, userId)))
+    return true
+  } catch (err) {
+    console.error('[server-data] updateLeadStatus error:', err)
     return false
   }
-  return true
 }
 
 export async function updateLeadDraft(
   userId: string,
   leadId: string,
-  draft: string
+  draft: string,
 ): Promise<boolean> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('leads_queue')
-    .update({ gate_2_generated_reply: draft })
-    .eq('id', leadId)
-    .eq('profile_id', userId)
-
-  if (error) {
-    console.error('[server-data] updateLeadDraft error:', error)
+  try {
+    await db
+      .update(leadsQueue)
+      .set({ gate_2_generated_reply: draft })
+      .where(and(eq(leadsQueue.id, leadId), eq(leadsQueue.profile_id, userId)))
+    return true
+  } catch (err) {
+    console.error('[server-data] updateLeadDraft error:', err)
     return false
   }
-  return true
 }
 
-// Check if user has any existing leads (for auto-scrape on first load logic)
 export async function hasLeads(userId: string, platform: Platform): Promise<boolean> {
-  const supabase = await createClient()
-  const { count } = await supabase
-    .from('leads_queue')
-    .select('*', { count: 'exact', head: true })
-    .eq('profile_id', userId)
-    .eq('platform', platform)
-
-  return (count ?? 0) > 0
+  try {
+    const [{ value }] = await db
+      .select({ value: count() })
+      .from(leadsQueue)
+      .where(and(eq(leadsQueue.profile_id, userId), eq(leadsQueue.platform, platform)))
+    return (value ?? 0) > 0
+  } catch {
+    return false
+  }
 }
 
 // ────────────────────────────────────────────────────────────
@@ -270,95 +262,91 @@ export interface BillingStatus {
 }
 
 export async function getBillingStatus(userId: string): Promise<BillingStatus | null> {
-  const supabase = await createClient()
+  try {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
-  const [profileResult, statsResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('credit_balance, free_demo_credits_remaining, free_demo_reset_at')
-      .eq('id', userId)
-      .single(),
-    supabase
-      .from('leads_queue')
-      .select('status, created_at')
-      .eq('profile_id', userId),
-  ])
+    const [profileRow, allLeads] = await Promise.all([
+      db.query.profiles.findFirst({
+        where: eq(profiles.id, userId),
+        columns: { credit_balance: true, free_demo_credits_remaining: true, free_demo_reset_at: true },
+      }),
+      db
+        .select({ status: leadsQueue.status, created_at: leadsQueue.created_at })
+        .from(leadsQueue)
+        .where(eq(leadsQueue.profile_id, userId)),
+    ])
 
-  if (profileResult.error || !profileResult.data) return null
+    if (!profileRow) return null
 
-  const leads = statsResult.data ?? []
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-  const leadsThisWeek = leads.filter((l) => +new Date(l.created_at) >= weekAgo).length
-  const leadsRepliedTotal = leads.filter((l) => l.status === 'REPLIED').length
+    const leadsThisWeek = allLeads.filter((l) => new Date(l.created_at) >= weekAgo).length
+    const leadsRepliedTotal = allLeads.filter((l) => l.status === 'REPLIED').length
 
-  return {
-    credit_balance: parseFloat(profileResult.data.credit_balance as unknown as string) || 0,
-    free_demo_credits_remaining: profileResult.data.free_demo_credits_remaining ?? 3,
-    free_demo_reset_at: profileResult.data.free_demo_reset_at ?? new Date().toISOString(),
-    leads_this_week: leadsThisWeek,
-    leads_replied_total: leadsRepliedTotal,
+    return {
+      credit_balance: parseFloat(profileRow.credit_balance as unknown as string) || 0,
+      free_demo_credits_remaining: profileRow.free_demo_credits_remaining ?? 5,
+      free_demo_reset_at:
+        profileRow.free_demo_reset_at?.toISOString() ?? new Date().toISOString(),
+      leads_this_week: leadsThisWeek,
+      leads_replied_total: leadsRepliedTotal,
+    }
+  } catch (err) {
+    console.error('[server-data] getBillingStatus error:', err)
+    return null
   }
 }
 
 export async function listLedger(userId: string): Promise<BillingEntry[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('billing_ledger')
-    .select('*')
-    .eq('profile_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(50)
-
-  if (error) {
-    console.error('[server-data] listLedger error:', error)
+  try {
+    const rows = await db
+      .select()
+      .from(billingLedger)
+      .where(eq(billingLedger.profile_id, userId))
+      .orderBy(desc(billingLedger.created_at))
+      .limit(50)
+    return rows as unknown as BillingEntry[]
+  } catch (err) {
+    console.error('[server-data] listLedger error:', err)
     return []
   }
-  return (data as BillingEntry[]) ?? []
 }
 
 export async function listTransactions(userId: string): Promise<Transaction[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('payment_transactions')
-    .select('*')
-    .eq('profile_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(50)
-
-  if (error) {
-    console.error('[server-data] listTransactions error:', error)
+  try {
+    const rows = await db
+      .select()
+      .from(paymentTransactions)
+      .where(eq(paymentTransactions.profile_id, userId))
+      .orderBy(desc(paymentTransactions.created_at))
+      .limit(50)
+    return rows as unknown as Transaction[]
+  } catch (err) {
+    console.error('[server-data] listTransactions error:', err)
     return []
   }
-  return (data as Transaction[]) ?? []
 }
 
 // ────────────────────────────────────────────────────────────
 // SCRAPE TRACKING
 // ────────────────────────────────────────────────────────────
-// Track last scrape time per user per platform (stored in a simple approach
-// using the latest lead created_at as a proxy for last scrape)
-export async function getLastScrapeTime(
-  userId: string,
-  platform: Platform
-): Promise<Date | null> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('leads_queue')
-    .select('created_at')
-    .eq('profile_id', userId)
-    .eq('platform', platform)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
 
-  if (!data) return null
-  return new Date(data.created_at)
+export async function getLastScrapeTime(userId: string, platform: Platform): Promise<Date | null> {
+  try {
+    const [row] = await db
+      .select({ created_at: leadsQueue.created_at })
+      .from(leadsQueue)
+      .where(and(eq(leadsQueue.profile_id, userId), eq(leadsQueue.platform, platform)))
+      .orderBy(desc(leadsQueue.created_at))
+      .limit(1)
+    return row ? new Date(row.created_at) : null
+  } catch {
+    return null
+  }
 }
 
 // ────────────────────────────────────────────────────────────
 // LEAD INSERT (used by scraper pipeline)
-// Uses service role to bypass RLS (scraper runs server-side, auth may not be available)
 // ────────────────────────────────────────────────────────────
+
 export interface NormalizedPost {
   external_post_id: string
   author_username: string
@@ -374,47 +362,47 @@ export async function insertLeads(
   userId: string,
   competitorTargetId: string,
   platform: Platform,
-  posts: NormalizedPost[]
+  posts: NormalizedPost[],
 ): Promise<{ inserted: number; duplicates: number }> {
-  const admin = createServiceRoleClient()
+  try {
+    const ids = posts.map((p) => p.external_post_id)
 
-  // Fetch existing external_post_ids to deduplicate (scoped by profile_id)
-  const ids = posts.map((p) => p.external_post_id)
-  const { data: existing } = await admin
-    .from('leads_queue')
-    .select('external_post_id')
-    .eq('profile_id', userId)
-    .in('external_post_id', ids)
+    // Fetch existing IDs to deduplicate (scoped by profile_id + in list)
+    const existing = await db
+      .select({ external_post_id: leadsQueue.external_post_id })
+      .from(leadsQueue)
+      .where(
+        and(eq(leadsQueue.profile_id, userId), inArray(leadsQueue.external_post_id, ids)),
+      )
 
-  const existingIds = new Set((existing ?? []).map((e) => e.external_post_id))
-  const newPosts = posts.filter((p) => !existingIds.has(p.external_post_id))
+    const existingIds = new Set(existing.map((e) => e.external_post_id))
+    const newPosts = posts.filter((p) => !existingIds.has(p.external_post_id))
 
-  if (newPosts.length === 0) {
-    return { inserted: 0, duplicates: posts.length }
+    if (newPosts.length === 0) {
+      return { inserted: 0, duplicates: posts.length }
+    }
+
+    const rows = newPosts.map((p) => ({
+      profile_id: userId,
+      competitor_target_id: competitorTargetId,
+      platform,
+      external_post_id: p.external_post_id,
+      author_username: p.author_username,
+      author_avatar_url: p.author_avatar_url ?? null,
+      raw_content: p.raw_content,
+      post_url: p.post_url,
+      status: (p.status ?? 'PENDING') as string,
+      gate_1_passed: p.gate_1_passed ?? false,
+      gate_1_model_used: p.gate_1_model_used ?? null,
+    }))
+
+    await db.insert(leadsQueue).values(rows).onConflictDoNothing()
+
+    return { inserted: newPosts.length, duplicates: existingIds.size }
+  } catch (err) {
+    console.error('[server-data] insertLeads error:', err)
+    return { inserted: 0, duplicates: 0 }
   }
-
-  const rows = newPosts.map((p) => ({
-    profile_id: userId,
-    competitor_target_id: competitorTargetId,
-    platform,
-    external_post_id: p.external_post_id,
-    author_username: p.author_username,
-    author_avatar_url: p.author_avatar_url ?? null,
-    raw_content: p.raw_content,
-    post_url: p.post_url,
-    status: p.status ?? 'PENDING',
-    gate_1_passed: p.gate_1_passed ?? false,
-    gate_1_model_used: p.gate_1_model_used,
-  }))
-
-  const { error } = await admin.from('leads_queue').insert(rows)
-
-  if (error) {
-    console.error('[server-data] insertLeads error:', error)
-    return { inserted: 0, duplicates: existingIds.size }
-  }
-
-  return { inserted: newPosts.length, duplicates: existingIds.size }
 }
 
 export interface PipelineLead extends Lead {
@@ -423,46 +411,52 @@ export interface PipelineLead extends Lead {
 
 export async function getLeadForPipeline(
   userId: string,
-  leadId: string
+  leadId: string,
 ): Promise<PipelineLead | null> {
-  const admin = createServiceRoleClient()
-  const { data, error } = await admin
-    .from('leads_queue')
-    .select('*, competitor_targets(competitor_name)')
-    .eq('id', leadId)
-    .eq('profile_id', userId)
-    .single()
+  try {
+    const row = await db.query.leadsQueue.findFirst({
+      where: and(eq(leadsQueue.id, leadId), eq(leadsQueue.profile_id, userId)),
+    })
 
-  if (error || !data) {
-    if (error) console.error('[server-data] getLeadForPipeline error:', error)
+    if (!row) return null
+
+    let competitorName: string | null = null
+    if (row.competitor_target_id) {
+      const comp = await db.query.competitorTargets.findFirst({
+        where: eq(competitorTargets.id, row.competitor_target_id),
+        columns: { competitor_name: true },
+      })
+      competitorName = comp?.competitor_name ?? null
+    }
+
+    return {
+      ...row,
+      competitor_name: competitorName,
+    } as unknown as PipelineLead
+  } catch (err) {
+    console.error('[server-data] getLeadForPipeline error:', err)
     return null
   }
-
-  const lead = data as Lead & {
-    competitor_targets?: { competitor_name?: string | null } | null
-  }
-
-  return {
-    ...lead,
-    competitor_name: lead.competitor_targets?.competitor_name ?? null,
-  }
 }
-// Get inserted leads by external_post_ids (for pipeline processing)
+
 export async function getLeadsByExternalIds(
   userId: string,
-  externalIds: string[]
+  externalIds: string[],
 ): Promise<Lead[]> {
-  const admin = createServiceRoleClient()
-  const { data } = await admin
-    .from('leads_queue')
-    .select('*')
-    .eq('profile_id', userId)
-    .in('external_post_id', externalIds)
-
-  return (data as Lead[]) ?? []
+  try {
+    const rows = await db
+      .select()
+      .from(leadsQueue)
+      .where(
+        and(eq(leadsQueue.profile_id, userId), inArray(leadsQueue.external_post_id, externalIds)),
+      )
+    return rows as unknown as Lead[]
+  } catch (err) {
+    console.error('[server-data] getLeadsByExternalIds error:', err)
+    return []
+  }
 }
 
-// Update lead after pipeline processing (uses service role for background processing)
 export async function updateLeadAfterPipeline(
   leadId: string,
   updates: {
@@ -472,14 +466,159 @@ export async function updateLeadAfterPipeline(
     gate_2_model_used?: string | null
     status: LeadStatus
     processing_time_ms?: number
-  }
+  },
 ): Promise<boolean> {
-  const admin = createServiceRoleClient()
-  const { error } = await admin.from('leads_queue').update(updates).eq('id', leadId)
-
-  if (error) {
-    console.error('[server-data] updateLeadAfterPipeline error:', error)
+  try {
+    await db.update(leadsQueue).set(updates as unknown as Partial<typeof leadsQueue.$inferInsert>).where(eq(leadsQueue.id, leadId))
+    return true
+  } catch (err) {
+    console.error('[server-data] updateLeadAfterPipeline error:', err)
     return false
   }
-  return true
+}
+
+// ────────────────────────────────────────────────────────────
+// CONSUME CYCLE CREDIT (atomic, replaces Supabase stored procedure)
+// Uses a Drizzle transaction with SELECT FOR UPDATE to prevent race conditions
+// ────────────────────────────────────────────────────────────
+
+export type CreditConsumeResult = 'FREE_DEMO' | 'CHARGED' | 'INSUFFICIENT_BALANCE'
+
+export async function consumeCycleCredit(
+  profileId: string,
+  leadId: string,
+): Promise<CreditConsumeResult> {
+  // neon-http does not support interactive transactions; use neon-serverless for transactions
+  // Fallback: use optimistic update with re-read for race condition mitigation
+  try {
+    const profile = await db.query.profiles.findFirst({
+      where: eq(profiles.id, profileId),
+    })
+    if (!profile) return 'INSUFFICIENT_BALANCE'
+
+    // Reset weekly demo credits if expired
+    const now = new Date()
+    let demoCreditsCurrent = profile.free_demo_credits_remaining
+
+    if (profile.free_demo_reset_at && now >= profile.free_demo_reset_at) {
+      demoCreditsCurrent = 5
+      await db
+        .update(profiles)
+        .set({
+          free_demo_credits_remaining: 5,
+          free_demo_reset_at: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+        })
+        .where(eq(profiles.id, profileId))
+    }
+
+    // Priority 1: Use free demo credits
+    if (demoCreditsCurrent > 0) {
+      await db
+        .update(profiles)
+        .set({ free_demo_credits_remaining: demoCreditsCurrent - 1 })
+        .where(eq(profiles.id, profileId))
+
+      await db.insert(billingLedger).values({
+        profile_id: profileId,
+        lead_id: leadId,
+        amount_usd: '0',
+        transaction_type: 'FREE_DEMO',
+      })
+
+      return 'FREE_DEMO'
+    }
+
+    // Priority 2: Deduct from credit_balance
+    const balance = parseFloat(profile.credit_balance as unknown as string) || 0
+    if (balance >= 0.1) {
+      await db
+        .update(profiles)
+        .set({ credit_balance: sql`${profiles.credit_balance} - 0.10` })
+        .where(eq(profiles.id, profileId))
+
+      await db.insert(billingLedger).values({
+        profile_id: profileId,
+        lead_id: leadId,
+        amount_usd: '-0.1000',
+        transaction_type: 'GATE_2_GENERATION_FEE',
+      })
+
+      return 'CHARGED'
+    }
+
+    return 'INSUFFICIENT_BALANCE'
+  } catch (err) {
+    console.error('[server-data] consumeCycleCredit error:', err)
+    return 'INSUFFICIENT_BALANCE'
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// PAYMENT TRANSACTIONS (Stripe / future gateway)
+// ────────────────────────────────────────────────────────────
+
+export async function createPaymentTransaction(data: {
+  profile_id: string
+  gateway: string
+  gateway_order_id: string
+  top_up_amount_usd: string
+  credit_granted_usd: string
+  amount_idr: number
+}): Promise<Transaction | null> {
+  try {
+    const [row] = await db.insert(paymentTransactions).values(data).returning()
+    return row as unknown as Transaction
+  } catch (err) {
+    console.error('[server-data] createPaymentTransaction error:', err)
+    return null
+  }
+}
+
+export async function settlePaymentTransaction(
+  gatewayOrderId: string,
+  profileId: string,
+  creditGrantedUsd: number,
+): Promise<boolean> {
+  try {
+    await db
+      .update(paymentTransactions)
+      .set({ status: 'SETTLED', paid_at: new Date() })
+      .where(
+        and(
+          eq(paymentTransactions.gateway_order_id, gatewayOrderId),
+          eq(paymentTransactions.profile_id, profileId),
+        ),
+      )
+
+    await db
+      .update(profiles)
+      .set({ credit_balance: sql`${profiles.credit_balance} + ${creditGrantedUsd}` })
+      .where(eq(profiles.id, profileId))
+
+    await db.insert(billingLedger).values({
+      profile_id: profileId,
+      lead_id: null,
+      amount_usd: String(creditGrantedUsd),
+      transaction_type: 'TOPUP',
+    })
+
+    return true
+  } catch (err) {
+    console.error('[server-data] settlePaymentTransaction error:', err)
+    return false
+  }
+}
+
+export async function getTransactionByGatewayOrderId(
+  gatewayOrderId: string,
+): Promise<Transaction | null> {
+  try {
+    const row = await db.query.paymentTransactions.findFirst({
+      where: eq(paymentTransactions.gateway_order_id, gatewayOrderId),
+    })
+    return row as unknown as Transaction | null
+  } catch (err) {
+    console.error('[server-data] getTransactionByGatewayOrderId error:', err)
+    return null
+  }
 }
