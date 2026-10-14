@@ -81,17 +81,8 @@ export function OnboardingModal({
           >
             <div className="flex min-h-full items-start justify-center px-4 py-10">
               <div className="relative w-full max-w-3xl">
-                {/* Close button */}
-                <button
-                  onClick={onClose}
-                  className="absolute right-4 top-4 z-10 rounded-lg p-2 text-muted transition-colors hover:bg-surface hover:text-text"
-                  aria-label="Close"
-                >
-                  <X size={18} />
-                </button>
-
                 {/* Context notice */}
-                <div className="mb-2 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 text-xs text-muted">
+                <div className="mb-3 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 text-xs text-muted">
                   <span className="font-semibold text-accent">
                     One-time setup needed:
                   </span>{" "}
@@ -99,8 +90,16 @@ export function OnboardingModal({
                   Takes less than 2 minutes.
                 </div>
 
-                {/* Wizard */}
-                <div className="rounded-2xl border border-border bg-bg shadow-2xl">
+                {/* Wizard Card Container */}
+                <div className="relative rounded-2xl border border-border bg-bg shadow-2xl">
+                  {/* Close button */}
+                  <button
+                    onClick={onClose}
+                    className="absolute right-4 top-4 z-20 rounded-xl p-2 text-muted transition-colors hover:bg-surface-2 hover:text-text cursor-pointer"
+                    aria-label="Close modal"
+                  >
+                    <X size={18} />
+                  </button>
                   {loadError ? (
                     <div className="flex h-64 items-center justify-center p-8 text-center text-sm text-muted">
                       Failed to load profile. Please refresh and try again.

@@ -45,7 +45,7 @@ export function CreditWidget({ onTopUp }: { onTopUp: () => void }) {
     );
   }
 
-  const creditBalance = status?.credit_balance ?? 2.0;
+  const creditBalance = status?.credit_balance ?? 0.0;
   const freeCredits = status?.free_demo_credits_remaining ?? 5;
   const lowBalance = freeCredits === 0 && creditBalance < 0.1;
 

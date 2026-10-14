@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, GitCompare } from "lucide-react";
+import { ChevronDown, GitCompare, Plus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
@@ -22,19 +22,15 @@ export function DifferentiatorPanel() {
         setProfile(p);
         const diffObj = p?.differentiators || ({} as Record<string, string>);
         setDiffs([
-          diffObj.differentiator_1 || "10x Faster Execution",
-          diffObj.differentiator_2 || "Zero Setup Fees",
-          diffObj.differentiator_3 || "AI-Powered Automation",
+          diffObj.differentiator_1 || "",
+          diffObj.differentiator_2 || "",
+          diffObj.differentiator_3 || "",
         ]);
         setLoading(false);
       })
       .catch((err) => {
         console.error("[DifferentiatorPanel] Failed to load profile:", err);
-        setDiffs([
-          "10x Faster Execution",
-          "Zero Setup Fees",
-          "AI-Powered Automation",
-        ]);
+        setDiffs(["", "", ""]);
         setLoading(false);
       });
   }, []);
@@ -55,11 +51,13 @@ export function DifferentiatorPanel() {
     setProfile(fresh);
   };
 
+  const hasAnyDiff = diffs.some((d) => d && d.trim().length > 0);
+
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-surface">
       <button
         onClick={() => setOpen((p) => !p)}
-        className="flex w-full items-center gap-2 px-5 py-4 text-left"
+        className="flex w-full items-center gap-2 px-5 py-4 text-left cursor-pointer"
       >
         <GitCompare size={16} className="text-accent" />
         <h2 className="flex-1 text-sm font-bold text-text">
@@ -79,7 +77,7 @@ export function DifferentiatorPanel() {
             className="overflow-hidden"
           >
             <div className="border-t border-border px-5 py-4">
-              {loading || !profile ? (
+              {loading ? (
                 <p className="text-sm text-muted">Loading…</p>
               ) : editing ? (
                 <div className="space-y-3">
@@ -94,39 +92,54 @@ export function DifferentiatorPanel() {
                           return next;
                         })
                       }
-                      placeholder={`Differentiator ${i + 1}`}
+                      placeholder={`Keunggulan pembeda ${i + 1} (contoh: 10x lebih cepat, gratis migrasi)`}
                     />
                   ))}
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSave}>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" onClick={handleSave} className="cursor-pointer">
                       Save
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => setEditing(false)}
+                      className="cursor-pointer"
                     >
                       Cancel
                     </Button>
                   </div>
                 </div>
-              ) : (
+              ) : hasAnyDiff ? (
                 <div>
                   <ol className="space-y-2">
-                    {diffs.map((d, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/15 text-[10px] font-bold text-accent">
-                          {i + 1}
-                        </span>
-                        <span className="text-sm text-text">{d}</span>
-                      </li>
-                    ))}
+                    {diffs
+                      .filter((d) => d && d.trim().length > 0)
+                      .map((d, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/15 text-[10px] font-bold text-accent">
+                            {i + 1}
+                          </span>
+                          <span className="text-sm text-text">{d}</span>
+                        </li>
+                      ))}
                   </ol>
                   <button
                     onClick={() => setEditing(true)}
-                    className="mt-4 text-xs font-medium text-accent hover:underline"
+                    className="mt-4 text-xs font-medium text-accent hover:underline cursor-pointer"
                   >
                     Edit differentiators
+                  </button>
+                </div>
+              ) : (
+                <div className="py-1">
+                  <p className="text-sm text-muted leading-relaxed">
+                    Belum ada poin pembeda yang diatur. Tambahkan keunggulan unik produk Anda agar AI dapat menonjolkannya saat membalas keluhan kompetitor.
+                  </p>
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/20 cursor-pointer"
+                  >
+                    <Plus size={13} /> Tambah Differentiators
                   </button>
                 </div>
               )}

@@ -24,7 +24,7 @@ export const profiles = pgTable('profiles', {
   email: varchar('email', { length: 255 }).notNull().unique(),
 
   // App Profile (filled during onboarding, used as Gate 2 context)
-  app_name: varchar('app_name', { length: 100 }).notNull().default('My New App'),
+  app_name: varchar('app_name', { length: 100 }).notNull().default(''),
   app_description: text('app_description'),
   app_url: text('app_url'),
   app_category: varchar('app_category', { length: 100 }),
@@ -34,9 +34,9 @@ export const profiles = pgTable('profiles', {
     .default('friendly'),
   onboarding_completed: boolean('onboarding_completed').notNull().default(false),
   differentiators: jsonb('differentiators').notNull().default({
-    differentiator_1: '10x Faster Execution',
-    differentiator_2: 'Zero Setup Fees',
-    differentiator_3: 'AI-Powered Automation',
+    differentiator_1: '',
+    differentiator_2: '',
+    differentiator_3: '',
   }),
   image_placeholder_url: text('image_placeholder_url').default(
     'https://via.placeholder.com/400x600.png?text=App+UI+Preview',
@@ -46,7 +46,7 @@ export const profiles = pgTable('profiles', {
   // Wallet & Free Demo Credits
   credit_balance: decimal('credit_balance', { precision: 10, scale: 4 })
     .notNull()
-    .default('2.0000'),
+    .default('0.0000'),
   free_demo_credits_remaining: integer('free_demo_credits_remaining')
     .notNull()
     .default(5),
