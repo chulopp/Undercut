@@ -77,25 +77,25 @@ export default function DashboardLayoutShell({
       <div className="flex min-h-screen bg-bg">
         <Sidebar xPending={xPending} igPending={igPending} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-bg/80 px-4 backdrop-blur-lg sm:px-6">
-            <button
-              className="rounded-lg p-2 text-text md:hidden"
-              aria-label="Menu"
-              onClick={() => router.push("/dashboard")}
-            >
-              <Menu size={20} />
-            </button>
-            <div className="flex items-center gap-2 md:hidden">
-              <span className="text-sm font-bold text-text">Undercut</span>
+          <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-bg/80 px-3 backdrop-blur-lg sm:h-16 sm:px-6">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                className="rounded-lg p-1.5 text-text md:hidden shrink-0"
+                aria-label="Menu"
+                onClick={() => router.push("/dashboard")}
+              >
+                <Menu size={18} />
+              </button>
+              <span className="text-sm font-bold text-text md:hidden truncate">Undercut</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <CreditWidget onTopUp={() => setTopUpOpen(true)} />
             </div>
           </header>
 
           <MobileTabBar xPending={xPending} igPending={igPending} />
 
-          <main className="flex-1 px-4 pb-24 pt-4 sm:px-6 md:pb-8 md:pt-8">
+          <main className="flex-1 px-3 pb-24 pt-3 sm:px-4 sm:pt-5 md:px-6 md:pb-8 md:pt-8">
             <div className="mx-auto max-w-5xl">
               <LowBalanceBanner
                 visible={lowBalance}

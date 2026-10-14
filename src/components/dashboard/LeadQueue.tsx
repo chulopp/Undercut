@@ -224,11 +224,11 @@ export function LeadQueue({ platform }: { platform: Platform }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-2">
         <h2 className="text-sm font-semibold text-text">
           Lead queue
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Pending Badge */}
           <span className="inline-flex h-7 items-center justify-center rounded-full border border-accent/20 bg-accent/10 px-3.5 text-[11px] font-bold text-accent select-none">
             {leads.length} pending

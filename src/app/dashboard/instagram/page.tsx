@@ -9,8 +9,8 @@ export default function DashboardInstagram() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-text">
-          <InstagramIcon style={{ fontSize: 24 }} />
+        <h1 className="flex items-center gap-2 text-xl font-bold text-text sm:text-2xl">
+          <InstagramIcon style={{ fontSize: 22 }} />
           <span>Instagram leads</span>
         </h1>
         <p className="mt-1 text-sm text-muted">

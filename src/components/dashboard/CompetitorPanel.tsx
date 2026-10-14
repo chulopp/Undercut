@@ -99,17 +99,18 @@ export function CompetitorPanel({ platform }: { platform: Platform }) {
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-surface p-5">
-      <div className="flex items-center gap-2">
+    <section className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
+      <div className="flex items-center gap-2 min-w-0">
         {platform === "X" ? (
-          <XIcon style={{ fontSize: 16 }} className="text-accent" />
+          <XIcon style={{ fontSize: 16 }} className="text-accent shrink-0" />
         ) : (
-          <InstagramIcon style={{ fontSize: 16 }} className="text-accent" />
+          <InstagramIcon style={{ fontSize: 16 }} className="text-accent shrink-0" />
         )}
-        <h2 className="text-base font-bold text-text">
-          Competitor targets — {platform === "X" ? "X (Twitter)" : "Instagram"}
+        <h2 className="text-sm font-bold text-text min-w-0 truncate sm:text-base">
+          Competitor targets —{" "}
+          <span className="whitespace-nowrap">{platform === "X" ? "X (Twitter)" : "Instagram"}</span>
         </h2>
-        <span className="ml-auto rounded-full bg-surface-2 px-2 py-1 text-[10px] font-medium text-muted">
+        <span className="ml-auto shrink-0 rounded-full bg-surface-2 px-2 py-1 text-[10px] font-medium text-muted">
           {activeCount}/{MAX_TARGETS} active
         </span>
       </div>

@@ -76,7 +76,7 @@ export function DifferentiatorPanel() {
             transition={{ duration: 0.22 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-border px-5 py-4">
+            <div className="border-t border-border px-4 py-3 sm:px-5 sm:py-4">
               {loading ? (
                 <p className="text-sm text-muted">Loading…</p>
               ) : editing ? (

@@ -79,7 +79,7 @@ export function OnboardingModal({
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
             className="fixed inset-0 z-[201] overflow-y-auto"
           >
-            <div className="flex min-h-full items-start justify-center px-4 py-10">
+            <div className="flex min-h-full items-start justify-center px-3 py-4 sm:px-4 sm:py-10">
               <div className="relative w-full max-w-3xl">
                 {/* Context notice */}
                 <div className="mb-3 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 text-xs text-muted">

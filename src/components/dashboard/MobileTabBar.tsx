@@ -22,7 +22,7 @@ export function MobileTabBar({
     }`;
 
   return (
-    <div className="sticky top-16 z-30 flex items-center border-b border-border bg-bg/95 backdrop-blur md:hidden">
+    <div className="sticky top-14 sm:top-16 z-30 flex items-center border-b border-border bg-bg/95 backdrop-blur md:hidden">
       <Link href={X_PATH} className={tabClass(pathname === X_PATH)}>
         <XIcon style={{ fontSize: 14 }} />
         X

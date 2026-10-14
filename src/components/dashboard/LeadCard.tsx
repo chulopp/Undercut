@@ -189,7 +189,7 @@ export function LeadCard({
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Left Column: 3D Twitter Post Card */}
-        <div className="rounded-3xl border border-border border-b-[3.5px] border-b-accent/40 bg-surface p-4 sm:p-6 shadow-[0_12px_24px_rgba(0,0,0,0.4),_inset_0_1.5px_0_rgba(255,255,255,0.06)] hover:border-accent/30 transition-all duration-300 flex flex-col justify-between min-h-[300px]">
+        <div className="rounded-3xl border border-border border-b-[3.5px] border-b-accent/40 bg-surface p-4 sm:p-6 shadow-[0_12px_24px_rgba(0,0,0,0.4),_inset_0_1.5px_0_rgba(255,255,255,0.06)] hover:border-accent/30 transition-all duration-300 flex flex-col justify-between min-h-[240px] sm:min-h-[300px]">
           <div>
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
@@ -209,12 +209,12 @@ export function LeadCard({
                   />
                 </div>
                 {/* Identity */}
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1">
-                    <span className="font-bold text-sm text-text leading-tight">{lead.author_username}</span>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="font-bold text-sm text-text leading-tight truncate max-w-[120px] sm:max-w-none">{lead.author_username}</span>
                     <VerifiedBadge />
                   </div>
-                  <span className="text-xs text-muted leading-tight mt-0.5">@{lead.author_username}</span>
+                  <span className="text-xs text-muted leading-tight mt-0.5 truncate max-w-[120px] sm:max-w-none">@{lead.author_username}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -269,8 +269,8 @@ export function LeadCard({
             <div className="my-3 border-t border-border/40" />
 
             {/* Stats & Actions */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-[11px] font-normal text-muted select-none">
+            <div className="flex flex-wrap items-center justify-between gap-y-1 gap-x-3">
+              <div className="flex items-center gap-3 text-[11px] font-normal text-muted select-none">
                 {isX ? (
                   <>
                     <span><strong className="text-text font-bold">3</strong> Retweets</span>
@@ -284,7 +284,7 @@ export function LeadCard({
                 href={lead.post_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-muted transition-colors hover:text-text"
+                className="inline-flex items-center gap-1 text-[11px] text-muted transition-colors hover:text-text shrink-0"
               >
                 View original post <ArrowUpRight size={11} />
               </a>
@@ -293,7 +293,7 @@ export function LeadCard({
         </div>
 
         {/* Right Column: 3D AI Reply Card */}
-        <div className="rounded-3xl border border-border border-b-[3.5px] border-b-success/40 bg-surface p-4 sm:p-6 shadow-[0_12px_24px_rgba(0,0,0,0.4),_inset_0_1.5px_0_rgba(255,255,255,0.06)] hover:border-success/30 transition-all duration-300 flex flex-col justify-between min-h-[300px]">
+        <div className="rounded-3xl border border-border border-b-[3.5px] border-b-success/40 bg-surface p-4 sm:p-6 shadow-[0_12px_24px_rgba(0,0,0,0.4),_inset_0_1.5px_0_rgba(255,255,255,0.06)] hover:border-success/30 transition-all duration-300 flex flex-col justify-between min-h-[240px] sm:min-h-[300px]">
           {!generatedReply ? (
             /* Case 1: Reply not generated yet */
             <div className="flex flex-col items-center justify-center flex-1 py-4 text-center h-full">
