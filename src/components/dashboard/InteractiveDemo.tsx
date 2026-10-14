@@ -161,31 +161,31 @@ export function InteractiveDemo({ platform, onDismiss }: InteractiveDemoProps) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
         {/* ── LEFT: Complaint Card ── */}
-        <div className="flex min-h-[280px] flex-col justify-between rounded-3xl border border-border border-b-[3.5px] border-b-accent/40 bg-surface p-4 shadow-[0_12px_24px_rgba(0,0,0,0.4),_inset_0_1.5px_0_rgba(255,255,255,0.06)] transition-all duration-300 sm:p-5">
+        <div className="flex min-h-[240px] sm:min-h-[280px] flex-col justify-between rounded-3xl border border-border border-b-[3.5px] border-b-accent/40 bg-surface p-4 shadow-[0_12px_24px_rgba(0,0,0,0.4),_inset_0_1.5px_0_rgba(255,255,255,0.06)] transition-all duration-300 sm:p-5">
           <div>
             {/* Header */}
             <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative h-11 w-11 overflow-hidden rounded-full border border-border/40">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-border/40">
                   <img
                     src={data.author_avatar_url}
                     alt={data.author_username}
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-bold leading-tight text-text">
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="text-sm font-bold leading-tight text-text truncate max-w-[120px] sm:max-w-none">
                       {data.author_username}
                     </span>
                     <VerifiedBadge />
                   </div>
-                  <span className="mt-0.5 text-xs leading-tight text-muted">
+                  <span className="mt-0.5 text-xs leading-tight text-muted truncate max-w-[120px] sm:max-w-none">
                     @{data.author_username}
                   </span>
                 </div>
               </div>
-              <PlatformIcon className="h-5 w-5 text-muted/60" />
+              <PlatformIcon className="h-5 w-5 text-muted/60 shrink-0" />
             </div>
 
             {/* Badge */}
@@ -224,7 +224,7 @@ export function InteractiveDemo({ platform, onDismiss }: InteractiveDemoProps) {
             </p>
             <div className="my-3 border-t border-border/40" />
             {/* Footer */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-y-1 gap-x-2">
               <div className="flex items-center gap-4 select-none text-[11px] font-normal text-muted">
                 {platform === "X" ? (
                   <>
@@ -242,7 +242,7 @@ export function InteractiveDemo({ platform, onDismiss }: InteractiveDemoProps) {
                   </span>
                 )}
               </div>
-              <span className="inline-flex items-center gap-1 text-[11px] text-muted">
+              <span className="inline-flex items-center gap-1 text-[11px] text-muted shrink-0">
                 View original post <ArrowUpRight size={11} />
               </span>
             </div>
@@ -250,7 +250,7 @@ export function InteractiveDemo({ platform, onDismiss }: InteractiveDemoProps) {
         </div>
 
         {/* ── RIGHT: AI Reply Card ── */}
-        <div className="flex min-h-[280px] flex-col justify-between rounded-3xl border border-border border-b-[3.5px] border-b-success/40 bg-surface p-4 shadow-[0_12px_24px_rgba(0,0,0,0.4),_inset_0_1.5px_0_rgba(255,255,255,0.06)] transition-all duration-300 sm:p-5">
+        <div className="flex min-h-[240px] sm:min-h-[280px] flex-col justify-between rounded-3xl border border-border border-b-[3.5px] border-b-success/40 bg-surface p-4 shadow-[0_12px_24px_rgba(0,0,0,0.4),_inset_0_1.5px_0_rgba(255,255,255,0.06)] transition-all duration-300 sm:p-5">
           <AnimatePresence mode="wait">
             {/* ── Step 0–1: idle / waiting state ── */}
             {(step === 0 || step === 1) && (

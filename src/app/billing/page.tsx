@@ -91,7 +91,7 @@ export default function BillingView() {
     .reduce((sum, e) => sum + Math.abs(e.amount_usd), 0);
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-10 md:py-16">
+    <div className="mx-auto max-w-4xl px-3.5 py-6 sm:px-6 sm:py-10 md:py-16">
       <Link
         href="/dashboard/x"
         className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-text"
@@ -99,8 +99,8 @@ export default function BillingView() {
         <ArrowLeft size={14} /> Back to dashboard
       </Link>
 
-      <header className="mt-6">
-        <h1 className="text-2xl font-bold text-text">Billing &amp; credits</h1>
+      <header className="mt-4 sm:mt-6">
+        <h1 className="text-xl font-bold text-text sm:text-2xl">Billing &amp; credits</h1>
         <p className="mt-1 text-sm text-muted">
           Pay-per-use. No subscription. Credits never expire.
         </p>
@@ -229,25 +229,25 @@ export default function BillingView() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border bg-surface-2 text-xs uppercase tracking-wider text-muted">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                  <th className="px-4 py-3 font-medium">Description</th>
-                  <th className="px-4 py-3 font-medium">Amount</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">Date</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">Description</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">Amount</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {transactions.map((tx) => (
                   <tr key={tx.id} className="bg-surface/40">
-                    <td className="px-4 py-3 text-muted">
+                    <td className="px-4 py-3 text-muted whitespace-nowrap">
                       {formatTime(tx.created_at)}
                     </td>
-                    <td className="px-4 py-3 text-text">
+                    <td className="px-4 py-3 text-text whitespace-nowrap">
                       Top up ${tx.top_up_amount_usd.toFixed(2)} · +${tx.credit_granted_usd.toFixed(2)} credit
                     </td>
-                    <td className="px-4 py-3 text-text">
+                    <td className="px-4 py-3 text-text whitespace-nowrap">
                       ${tx.top_up_amount_usd.toFixed(2)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                           STATUS_COLORS[tx.status]
@@ -262,10 +262,10 @@ export default function BillingView() {
                   .filter((e) => e.transaction_type !== "TOPUP")
                   .map((e) => (
                     <tr key={e.id} className="bg-surface/40">
-                      <td className="px-4 py-3 text-muted">
+                      <td className="px-4 py-3 text-muted whitespace-nowrap">
                         {formatTime(e.created_at)}
                       </td>
-                      <td className="px-4 py-3 text-text">
+                      <td className="px-4 py-3 text-text whitespace-nowrap">
                         {e.transaction_type === "FREE_DEMO"
                           ? "Free weekly demo used"
                           : e.transaction_type === "GATE_2_GENERATION_FEE"
@@ -274,12 +274,12 @@ export default function BillingView() {
                               ? "Refund"
                               : e.transaction_type}
                       </td>
-                      <td className="px-4 py-3 text-text">
+                      <td className="px-4 py-3 text-text whitespace-nowrap">
                         {e.amount_usd < 0
                           ? `-$${Math.abs(e.amount_usd).toFixed(2)}`
                           : "$0.00"}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success">
                           SETTLED
                         </span>

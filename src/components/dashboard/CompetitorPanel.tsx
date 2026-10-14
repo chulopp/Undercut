@@ -190,12 +190,12 @@ export function CompetitorPanel({ platform }: { platform: Platform }) {
                       }`}
                       title={c.is_active ? "Active" : "Paused"}
                     />
-                    <div className="flex flex-1 flex-col">
-                      <span className="text-sm font-medium text-text">
+                    <div className="flex flex-1 flex-col min-w-0">
+                      <span className="text-sm font-medium text-text truncate">
                         {c.competitor_name}
                       </span>
                       {platform === "INSTAGRAM" && (
-                        <span className="font-mono text-[11px] text-muted">
+                        <span className="font-mono text-[11px] text-muted truncate">
                           @{c.search_query}
                         </span>
                       )}
