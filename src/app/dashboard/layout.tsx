@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
@@ -31,32 +31,36 @@ export default function DashboardLayoutShell({
   const pathname = usePathname();
   const router = useRouter();
   const toast = useToast();
+  const paymentHandledRef = useRef(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const payment = params.get("payment");
+    if (typeof window === "undefined" || paymentHandledRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    if (!payment) return;
+
+    // Mark handled immediately to guarantee it only triggers once
+    paymentHandledRef.current = true;
+
+    // Clean URL query parameters immediately
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+    router.replace(cleanUrl, { scroll: false });
+
+    if (payment === "success") {
       const amount = params.get("amount");
-      if (payment === "success") {
-        const val = amount ? parseFloat(amount) : 0;
-        if (val > 0) {
-          toast.success(`Top-up of $${val.toFixed(2)} was successful!`);
-        } else {
-          toast.success("Top-up was successful!");
-        }
-        // Force credit widget to update
-        window.dispatchEvent(new CustomEvent("billing-updated"));
-        // Clean URL query parameters
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-      } else if (payment === "cancelled") {
-        toast.error("Top-up was cancelled.");
-        // Clean URL query parameters
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
+      const val = amount ? parseFloat(amount) : 0;
+      if (val > 0) {
+        toast.success(`Top-up of $${val.toFixed(2)} was successful!`);
+      } else {
+        toast.success("Top-up was successful!");
       }
+      // Force credit widget to update
+      window.dispatchEvent(new CustomEvent("billing-updated"));
+    } else if (payment === "cancelled") {
+      toast.error("Top-up was cancelled.");
     }
-  }, [toast]);
+  }, [router, toast]);
 
   useEffect(() => {
     const fetchCounts = async () => {

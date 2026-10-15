@@ -72,7 +72,7 @@ export function TopUpModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-label="Top up credits"
@@ -96,8 +96,8 @@ export function TopUpModal({
               <X size={18} />
             </button>
 
-            <div className="flex items-center gap-2 text-text">
-              <CreditCard size={18} className="text-accent" />
+            <div className="flex items-center gap-2 text-text pr-8">
+              <CreditCard size={18} className="text-accent shrink-0" />
               <h2 className="text-lg font-bold">Top up credits</h2>
             </div>
             <p className="mt-1 text-xs text-muted">

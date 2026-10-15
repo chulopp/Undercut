@@ -17,7 +17,7 @@ export function LowBalanceBanner({
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="sticky top-2 z-30 mx-auto mb-6 flex max-w-3xl flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 backdrop-blur"
+      className="relative z-10 mx-auto mb-6 flex max-w-3xl flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 backdrop-blur"
     >
       <div className="flex items-center gap-3">
         <AlertTriangle size={18} className="shrink-0 text-warning" />
