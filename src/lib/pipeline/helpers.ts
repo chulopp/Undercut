@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { leadsQueue, competitorTargets } from '@/lib/db/schema'
-import { and, eq, inArray } from 'drizzle-orm'
+import { leadsQueue, competitorTargets, profiles, billingLedger } from '@/lib/db/schema'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import {
   updateLeadAfterPipeline,
   consumeCycleCredit,
@@ -199,6 +199,30 @@ export async function processLeadPipeline(
     )
   } catch (err) {
     console.error('[pipeline] Gate 2 reply generation failed:', err)
+    // Refund consumed credit if Gate 2 failed
+    try {
+      if (creditResult === 'FREE_DEMO') {
+        await db
+          .update(profiles)
+          .set({ free_demo_credits_remaining: sql`${profiles.free_demo_credits_remaining} + 1` })
+          .where(eq(profiles.id, userId))
+      } else if (creditResult === 'CHARGED') {
+        await db
+          .update(profiles)
+          .set({ credit_balance: sql`COALESCE(${profiles.credit_balance}, 0) + 0.10` })
+          .where(eq(profiles.id, userId))
+
+        await db.insert(billingLedger).values({
+          profile_id: userId,
+          lead_id: leadId,
+          amount_usd: '0.1000',
+          transaction_type: 'REFUND_FAILED_GENERATION',
+        })
+      }
+    } catch (refundErr) {
+      console.error('[pipeline] Failed to refund credit after Gate 2 error:', refundErr)
+    }
+
     // Revert to PENDING so user can retry
     await updateLeadAfterPipeline(leadId, {
       gate_1_passed: true,

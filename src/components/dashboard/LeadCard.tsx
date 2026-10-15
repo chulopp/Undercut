@@ -53,11 +53,13 @@ export function LeadCard({
   const [xPlan, setXPlan] = useState<"free" | "paid">("free");
 
   useEffect(() => {
-    getProfile().then((p) => {
-      if (p.x_plan) {
-        setXPlan(p.x_plan);
-      }
-    });
+    getProfile()
+      .then((p) => {
+        if (p?.x_plan) {
+          setXPlan(p.x_plan);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const toast = useToast();
@@ -379,9 +381,9 @@ export function LeadCard({
                       UNDERCUT DRAFT
                     </span>
                   )}
-                  {processingTime && (
+                  {Boolean(processingTime && Number(processingTime) > 0) && (
                     <span className="text-[10px] text-muted font-mono bg-surface-2 border border-border px-1.5 py-0.5 rounded-full">
-                      {(processingTime / 1000).toFixed(1)}s
+                      {(Number(processingTime) / 1000).toFixed(1)}s
                     </span>
                   )}
                 </div>

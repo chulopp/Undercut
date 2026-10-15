@@ -74,28 +74,41 @@ export function CompetitorPanel({ platform }: { platform: Platform }) {
       search_query = query.trim().replace(/@/g, "");
     }
 
-    await addCompetitor({
-      competitor_name: name.trim(),
-      platform,
-      search_query,
-    });
-    
-    setName("");
-    setQuery("");
-    setSubmitting(false);
-    toast.success("Target added — Undercut will start monitoring");
-    load();
+    try {
+      await addCompetitor({
+        competitor_name: name.trim(),
+        platform,
+        search_query,
+      });
+      setName("");
+      setQuery("");
+      toast.success("Target added — Undercut will start monitoring");
+      await load();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to add competitor target";
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async (id: string, compName: string) => {
-    await deleteCompetitor(id);
-    toast.success(`Target "${compName}" removed`);
-    load();
+    try {
+      await deleteCompetitor(id);
+      toast.success(`Target "${compName}" removed`);
+      await load();
+    } catch {
+      toast.error(`Failed to remove target "${compName}"`);
+    }
   };
 
   const handleToggle = async (id: string) => {
-    await toggleCompetitor(id);
-    load();
+    try {
+      await toggleCompetitor(id);
+      await load();
+    } catch {
+      toast.error("Failed to update target status");
+    }
   };
 
   return (

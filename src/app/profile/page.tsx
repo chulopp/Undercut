@@ -13,20 +13,31 @@ export default function ProfilePage() {
   >(undefined);
 
   useEffect(() => {
-    getProfile().then((p) => {
-      setInitial({
-        app_name: p.app_name,
-        app_description: p.app_description,
-        app_url: p.app_url,
-        app_category: p.app_category,
-        target_audience: p.target_audience,
-        tone_of_voice: p.tone_of_voice,
-        differentiators: p.differentiators,
-        company_name: p.company_name,
-        onboarding_completed: p.onboarding_completed,
+    getProfile()
+      .then((p) => {
+        if (p) {
+          setInitial({
+            app_name: p.app_name ?? "",
+            app_description: p.app_description ?? "",
+            app_url: p.app_url ?? "",
+            app_category: p.app_category ?? "",
+            target_audience: p.target_audience ?? "",
+            tone_of_voice: p.tone_of_voice ?? "friendly",
+            differentiators: p.differentiators ?? {
+              differentiator_1: "",
+              differentiator_2: "",
+              differentiator_3: "",
+            },
+            company_name: p.company_name ?? null,
+            onboarding_completed: p.onboarding_completed ?? false,
+          });
+        }
+        setLoaded(true);
+      })
+      .catch((err) => {
+        console.error("Failed to load profile:", err);
+        setLoaded(true);
       });
-      setLoaded(true);
-    });
   }, []);
 
   if (!loaded) {

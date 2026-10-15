@@ -294,6 +294,8 @@ const sortLeads = (list: Lead[]): Lead[] => {
     if (isRepliedA && !isRepliedB) return 1;
 
     // Rule 3: Sort by created_at descending (newest first)
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
   });
 };

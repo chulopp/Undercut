@@ -63,22 +63,38 @@ export default function DashboardLayoutShell({
   }, [router, toast]);
 
   useEffect(() => {
+    let mounted = true;
     const fetchCounts = async () => {
-      const [x, ig, status] = await Promise.all([
-        listLeads("X", "PENDING"),
-        listLeads("INSTAGRAM", "PENDING"),
-        getBillingStatus(),
-      ]);
-      setXPending(x.length);
-      setIgPending(ig.length);
-      setLowBalance(
-        status.free_demo_credits_remaining === 0 && status.credit_balance < 0.1
-      );
+      try {
+        const [x, ig, status] = await Promise.all([
+          listLeads("X", "PENDING").catch(() => []),
+          listLeads("INSTAGRAM", "PENDING").catch(() => []),
+          getBillingStatus().catch(() => null),
+        ]);
+        if (!mounted) return;
+        setXPending(Array.isArray(x) ? x.length : 0);
+        setIgPending(Array.isArray(ig) ? ig.length : 0);
+        if (status) {
+          const freeCredits = Number(status.free_demo_credits_remaining) || 0;
+          const balance =
+            typeof status.credit_balance === "number"
+              ? status.credit_balance
+              : parseFloat(String(status.credit_balance ?? 0)) || 0;
+          setLowBalance(freeCredits === 0 && balance < 0.1);
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard counts:", err);
+      }
     };
     fetchCounts();
+    window.addEventListener("billing-updated", fetchCounts);
     // poll every 30s for new leads (real-time stub, see PRD §G.11 tahap 5)
     const interval = setInterval(fetchCounts, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      mounted = false;
+      window.removeEventListener("billing-updated", fetchCounts);
+      clearInterval(interval);
+    };
   }, [pathname]);
 
   useEffect(() => {

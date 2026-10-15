@@ -606,7 +606,7 @@ export async function settlePaymentTransaction(
 
     await db
       .update(profiles)
-      .set({ credit_balance: sql`${profiles.credit_balance} + ${creditGrantedUsd}` })
+      .set({ credit_balance: sql`COALESCE(${profiles.credit_balance}, 0) + ${creditGrantedUsd}` })
       .where(eq(profiles.id, profileId))
 
     await db.insert(billingLedger).values({
