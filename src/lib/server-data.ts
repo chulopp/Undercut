@@ -306,7 +306,11 @@ export async function listLedger(userId: string): Promise<BillingEntry[]> {
       .where(eq(billingLedger.profile_id, userId))
       .orderBy(desc(billingLedger.created_at))
       .limit(50)
-    return rows as unknown as BillingEntry[]
+    return rows.map((r) => ({
+      ...r,
+      amount_usd: parseFloat(r.amount_usd as unknown as string) || 0,
+      created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    })) as unknown as BillingEntry[]
   } catch (err) {
     console.error('[server-data] listLedger error:', err)
     return []
@@ -321,7 +325,14 @@ export async function listTransactions(userId: string): Promise<Transaction[]> {
       .where(eq(paymentTransactions.profile_id, userId))
       .orderBy(desc(paymentTransactions.created_at))
       .limit(50)
-    return rows as unknown as Transaction[]
+    return rows.map((r) => ({
+      ...r,
+      top_up_amount_usd: parseFloat(r.top_up_amount_usd as unknown as string) || 0,
+      credit_granted_usd: parseFloat(r.credit_granted_usd as unknown as string) || 0,
+      amount_idr: Number(r.amount_idr) || 0,
+      created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+      paid_at: r.paid_at instanceof Date ? r.paid_at.toISOString() : r.paid_at ? String(r.paid_at) : null,
+    })) as unknown as Transaction[]
   } catch (err) {
     console.error('[server-data] listTransactions error:', err)
     return []

@@ -27,14 +27,27 @@ const STATUS_COLORS = {
   EXPIRED: "bg-surface-2 text-muted",
 } as const;
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+const toNum = (val: unknown): number => {
+  if (typeof val === "number") return isNaN(val) ? 0 : val;
+  const n = parseFloat(String(val ?? 0));
+  return isNaN(n) ? 0 : n;
+};
+
+function formatTime(iso: string | null | undefined) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return String(iso);
+  }
 }
 
 export default function BillingView() {
@@ -48,15 +61,39 @@ export default function BillingView() {
   const toast = useToast();
 
   useEffect(() => {
-    getBillingStatus().then((s) => {
-      setStatus(s);
-      setLoadingStatus(false);
-    });
-    Promise.all([listLedger(), listTransactions()]).then(([l, t]) => {
-      setLedger(l);
-      setTransactions(t);
-      setLoadingHistory(false);
-    });
+    let mounted = true;
+    getBillingStatus()
+      .then((s) => {
+        if (mounted) {
+          setStatus(s);
+          setLoadingStatus(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load billing status:", err);
+        if (mounted) setLoadingStatus(false);
+      });
+
+    Promise.all([listLedger(), listTransactions()])
+      .then(([l, t]) => {
+        if (mounted) {
+          setLedger(Array.isArray(l) ? l : []);
+          setTransactions(Array.isArray(t) ? t : []);
+          setLoadingHistory(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load billing history:", err);
+        if (mounted) {
+          setLedger([]);
+          setTransactions([]);
+          setLoadingHistory(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleTopUp = async () => {
@@ -81,14 +118,14 @@ export default function BillingView() {
   };
 
   const [weekStart] = useState(() => Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const totalSpentThisWeek = ledger
+  const totalSpentThisWeek = (Array.isArray(ledger) ? ledger : [])
     .filter(
       (e) =>
         (e.transaction_type === "GATE_2_GENERATION_FEE" ||
           e.transaction_type === "FREE_DEMO") &&
         +new Date(e.created_at) > weekStart
     )
-    .reduce((sum, e) => sum + Math.abs(e.amount_usd), 0);
+    .reduce((sum, e) => sum + Math.abs(toNum(e.amount_usd)), 0);
 
   return (
     <div className="mx-auto max-w-4xl px-3.5 py-6 sm:px-6 sm:py-10 md:py-16">
@@ -117,7 +154,7 @@ export default function BillingView() {
             ) : (
               <>
                 <div className="mt-3 text-4xl font-bold text-text">
-                  ${status.credit_balance.toFixed(2)}
+                  ${toNum(status.credit_balance).toFixed(2)}
                 </div>
                 <div className="mt-4 space-y-2 text-sm text-muted">
                   <div className="flex items-center justify-between">
@@ -135,7 +172,7 @@ export default function BillingView() {
                   <div className="flex items-center justify-between">
                     <span>Spent this week</span>
                     <span className="font-semibold text-text">
-                      ${totalSpentThisWeek.toFixed(2)}
+                      ${toNum(totalSpentThisWeek).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -201,7 +238,7 @@ export default function BillingView() {
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <>
-                <CreditCard size={16} /> Pay ${customAmount.toFixed(2)}
+                <CreditCard size={16} /> Pay ${toNum(customAmount).toFixed(2)}
               </>
             )}
           </Button>
@@ -224,6 +261,10 @@ export default function BillingView() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : transactions.length === 0 && ledger.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-border bg-surface/40 p-8 text-center text-sm text-muted">
+            No transaction history yet.
+          </div>
         ) : (
           <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
             <table className="w-full text-left text-sm">
@@ -242,15 +283,15 @@ export default function BillingView() {
                       {formatTime(tx.created_at)}
                     </td>
                     <td className="px-4 py-3 text-text whitespace-nowrap">
-                      Top up ${tx.top_up_amount_usd.toFixed(2)} · +${tx.credit_granted_usd.toFixed(2)} credit
+                      Top up ${toNum(tx.top_up_amount_usd).toFixed(2)} · +${toNum(tx.credit_granted_usd).toFixed(2)} credit
                     </td>
                     <td className="px-4 py-3 text-text whitespace-nowrap">
-                      ${tx.top_up_amount_usd.toFixed(2)}
+                      ${toNum(tx.top_up_amount_usd).toFixed(2)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          STATUS_COLORS[tx.status]
+                          STATUS_COLORS[tx.status] || "bg-surface-2 text-muted"
                         }`}
                       >
                         {tx.status}
@@ -275,8 +316,8 @@ export default function BillingView() {
                               : e.transaction_type}
                       </td>
                       <td className="px-4 py-3 text-text whitespace-nowrap">
-                        {e.amount_usd < 0
-                          ? `-$${Math.abs(e.amount_usd).toFixed(2)}`
+                        {toNum(e.amount_usd) < 0
+                          ? `-$${Math.abs(toNum(e.amount_usd)).toFixed(2)}`
                           : "$0.00"}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
